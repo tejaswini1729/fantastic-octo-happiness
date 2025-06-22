@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Paper,
@@ -20,6 +20,13 @@ import {
   Tooltip,
   Card,
   CardMedia,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  FormControl,
+  InputLabel,
+  Select,
   styled
 } from '@mui/material';
 import {
@@ -27,7 +34,10 @@ import {
   FilterList as FilterIcon,
   Add as AddIcon,
   MoreVert as MoreVertIcon,
-  Visibility as VisibilityIcon
+  Visibility as VisibilityIcon,
+  CloudUpload as CloudUploadIcon,
+  Save as SaveIcon,
+  Cancel as CancelIcon
 } from '@mui/icons-material';
 
 // Styled components
@@ -120,8 +130,27 @@ export default function PartsManagementTable() {
   const [selectedPart, setSelectedPart] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [activeDropdown, setActiveDropdown] = useState(null);
+  
+  // Add Part Modal States
+  const [addPartModal, setAddPartModal] = useState(false);
+  const [uploadedImage, setUploadedImage] = useState(null);
+  const [newPartData, setNewPartData] = useState({
+    part: '',
+    model: '',
+    variant: '',
+    side: ''
+  });
+  const [tempMarkupPoints, setTempMarkupPoints] = useState([]);
+  
+  // Point Modal States
+  const [pointModal, setPointModal] = useState(false);
+  const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
+  const [pointData, setPointData] = useState({ position: '', category: '' });
+  
+  // File input ref
+  const fileInputRef = useRef(null);
 
-  const partsData = [
+  const [partsData, setPartsData] = useState([
     { 
       id: 1, 
       part: 'Door', 
@@ -239,7 +268,7 @@ export default function PartsManagementTable() {
         { x: 160, y: 130, position: 4, category: 'CMM' }
       ]
     }
-  ];
+  ]);
 
   const filteredData = partsData.filter(item =>
     Object.values(item).some(value =>
@@ -281,6 +310,71 @@ export default function PartsManagementTable() {
     handleDropdownClose();
   };
 
+  // Add Part Modal Handlers
+  const handleAddPartClick = () => {
+    setAddPartModal(true);
+    setUploadedImage(null);
+    setNewPartData({ part: '', model: '', variant: '', side: '' });
+    setTempMarkupPoints([]);
+  };
+
+  const handleImageUpload = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setUploadedImage(e.target.result);
+        setTempMarkupPoints([]);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleImageClick = (event) => {
+    if (!uploadedImage) return;
+    
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+    
+    setCurrentPoint({ x, y });
+    setPointModal(true);
+    setPointData({ position: '', category: '' });
+  };
+
+  const handlePointSubmit = () => {
+    if (pointData.position && pointData.category) {
+      const newPoint = {
+        x: currentPoint.x,
+        y: currentPoint.y,
+        position: parseInt(pointData.position),
+        category: pointData.category
+      };
+      setTempMarkupPoints(prev => [...prev, newPoint]);
+      setPointModal(false);
+      setPointData({ position: '', category: '' });
+    }
+  };
+
+  const handlePartSubmit = () => {
+    if (newPartData.part && newPartData.model && newPartData.variant && 
+        newPartData.side && uploadedImage && tempMarkupPoints.length > 0) {
+      const newPart = {
+        id: Date.now(),
+        ...newPartData,
+        imageUrl: uploadedImage,
+        markupPoints: tempMarkupPoints
+      };
+      setPartsData(prev => [...prev, newPart]);
+      setAddPartModal(false);
+      setUploadedImage(null);
+      setNewPartData({ part: '', model: '', variant: '', side: '' });
+      setTempMarkupPoints([]);
+    }
+  };
+
+  const categoryOptions = ['CMM', 'LD Gap', 'Supplier Part', 'All'];
+
   return (
     <MainContainer>
       <Container maxWidth="xl">
@@ -293,6 +387,7 @@ export default function PartsManagementTable() {
             <Button
               variant="contained"
               startIcon={<AddIcon />}
+              onClick={handleAddPartClick}
               sx={{ borderRadius: 2 }}
             >
               Add Part
@@ -480,6 +575,211 @@ export default function PartsManagementTable() {
             Delete
           </MenuItem>
         </Menu>
+
+        {/* Add Part Modal */}
+        <Dialog 
+          open={addPartModal} 
+          onClose={() => setAddPartModal(false)}
+          maxWidth="md"
+          fullWidth
+          PaperProps={{
+            sx: { borderRadius: 3, minHeight: '80vh' }
+          }}
+        >
+          <DialogTitle>
+            <Typography variant="h6" component="span">
+              Add New Part
+            </Typography>
+          </DialogTitle>
+          
+          <DialogContent sx={{ pt: 3 }}>
+            <Box display="flex" flexDirection="column" gap={3}>
+              {/* Part Details Form */}
+              <Box display="flex" gap={2}>
+                <TextField
+                  label="Part"
+                  value={newPartData.part}
+                  onChange={(e) => setNewPartData(prev => ({ ...prev, part: e.target.value }))}
+                  fullWidth
+                  variant="outlined"
+                />
+                <TextField
+                  label="Model"
+                  value={newPartData.model}
+                  onChange={(e) => setNewPartData(prev => ({ ...prev, model: e.target.value }))}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Box>
+              
+              <Box display="flex" gap={2}>
+                <TextField
+                  label="Variant"
+                  value={newPartData.variant}
+                  onChange={(e) => setNewPartData(prev => ({ ...prev, variant: e.target.value }))}
+                  fullWidth
+                  variant="outlined"
+                />
+                <TextField
+                  label="Side"
+                  value={newPartData.side}
+                  onChange={(e) => setNewPartData(prev => ({ ...prev, side: e.target.value }))}
+                  fullWidth
+                  variant="outlined"
+                />
+              </Box>
+
+              {/* Image Upload */}
+              <Box>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageUpload}
+                  style={{ display: 'none' }}
+                  ref={fileInputRef}
+                />
+                <Button
+                  variant="outlined"
+                  startIcon={<CloudUploadIcon />}
+                  onClick={() => fileInputRef.current?.click()}
+                  sx={{ mb: 2 }}
+                >
+                  Upload Image
+                </Button>
+
+                {/* Image Display with Markup Points */}
+                {uploadedImage && (
+                  <Box>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                      Click on the image to add markup points:
+                    </Typography>
+                    <Card sx={{ maxWidth: '100%', border: '2px solid #1976d2' }}>
+                      <Box
+                        component="img"
+                        src={uploadedImage}
+                        alt="Uploaded part"
+                        onClick={handleImageClick}
+                        sx={{
+                          width: '100%',
+                          maxHeight: '400px',
+                          objectFit: 'contain',
+                          cursor: 'crosshair',
+                          position: 'relative'
+                        }}
+                      />
+                      {/* Temporary Markup Points */}
+                      <Box sx={{ position: 'relative' }}>
+                        {tempMarkupPoints.map((point, index) => (
+                          <Box
+                            key={index}
+                            sx={{
+                              position: 'absolute',
+                              left: point.x - 12,
+                              top: point.y - 12 - 400, // Adjust for image height
+                              width: 24,
+                              height: 24,
+                              backgroundColor: 'white',
+                              border: '2px solid white',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: 'black',
+                              zIndex: 10
+                            }}
+                          >
+                            {index + 1}
+                          </Box>
+                        ))}
+                      </Box>
+                    </Card>
+                    
+                    {tempMarkupPoints.length > 0 && (
+                      <Typography variant="body2" color="primary" sx={{ mt: 1 }}>
+                        {tempMarkupPoints.length} markup point(s) added
+                      </Typography>
+                    )}
+                  </Box>
+                )}
+              </Box>
+            </Box>
+          </DialogContent>
+          
+          <DialogActions sx={{ p: 3 }}>
+            <Button 
+              onClick={() => setAddPartModal(false)}
+              startIcon={<CancelIcon />}
+              variant="outlined"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePartSubmit}
+              startIcon={<SaveIcon />}
+              variant="contained"
+              disabled={!newPartData.part || !newPartData.model || !newPartData.variant || 
+                       !newPartData.side || !uploadedImage || tempMarkupPoints.length === 0}
+            >
+              Save Part
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Point Details Modal */}
+        <Dialog 
+          open={pointModal} 
+          onClose={() => setPointModal(false)}
+          maxWidth="sm"
+          fullWidth
+        >
+          <DialogTitle>
+            Add Markup Point
+          </DialogTitle>
+          
+          <DialogContent sx={{ pt: 3 }}>
+            <Box display="flex" flexDirection="column" gap={3}>
+              <TextField
+                label="Position"
+                type="number"
+                value={pointData.position}
+                onChange={(e) => setPointData(prev => ({ ...prev, position: e.target.value }))}
+                fullWidth
+                variant="outlined"
+              />
+              
+              <FormControl fullWidth variant="outlined">
+                <InputLabel>Category</InputLabel>
+                <Select
+                  value={pointData.category}
+                  onChange={(e) => setPointData(prev => ({ ...prev, category: e.target.value }))}
+                  label="Category"
+                >
+                  {categoryOptions.map((option) => (
+                    <MenuItem key={option} value={option}>
+                      {option}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </DialogContent>
+          
+          <DialogActions>
+            <Button onClick={() => setPointModal(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePointSubmit}
+              variant="contained"
+              disabled={!pointData.position || !pointData.category}
+            >
+              Add Point
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Container>
     </MainContainer>
   );
