@@ -10,10 +10,12 @@ import {
 } from '@mui/material';
 import { 
   Image as ImageIcon, 
-  TableChart as TableChartIcon 
+  TableChart as TableChartIcon,
+  LocationOn as LocationOnIcon
 } from '@mui/icons-material';
 import ImageMarkerApp from './ImageMarkerApp';
 import PartsManagementTable from './PartsManagementTable';
+import PositionMarkingInterface from './components/PositionMarkingInterface';
 
 function TabPanel({ children, value, index }) {
   return (
@@ -57,6 +59,11 @@ function App() {
               label="Parts Management" 
               sx={{ color: 'white', '&.Mui-selected': { color: 'white' } }}
             />
+            <Tab 
+              icon={<LocationOnIcon />} 
+              label="Position Marking" 
+              sx={{ color: 'white', '&.Mui-selected': { color: 'white' } }}
+            />
           </Tabs>
         </Toolbar>
       </AppBar>
@@ -68,6 +75,10 @@ function App() {
       
       <TabPanel value={tabValue} index={1}>
         <PartsManagementTable />
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={2}>
+        <PositionMarkingInterface />
       </TabPanel>
     </Box>
   );
