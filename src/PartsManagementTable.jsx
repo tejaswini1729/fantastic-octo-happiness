@@ -127,13 +127,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'LxI', 
-      side: 'Right Hand', 
-      position: 10, 
-      category: 'CMM',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 50, y: 80, label: 'Handle', type: 'measurement' },
-        { x: 150, y: 120, label: 'Hinge', type: 'defect' }
+        { x: 50, y: 80, position: 10, category: 'CMM' },
+        { x: 150, y: 120, position: 9, category: 'LD Gap' }
       ]
     },
     { 
@@ -141,13 +139,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'LxI', 
-      side: 'Right Hand', 
-      position: 9, 
-      category: 'LD Gap',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 75, y: 60, label: 'Gap Point', type: 'measurement' },
-        { x: 200, y: 180, label: 'Edge', type: 'inspection' }
+        { x: 75, y: 60, position: 8, category: 'Supplier Part' },
+        { x: 200, y: 180, position: 7, category: 'All' }
       ]
     },
     { 
@@ -155,13 +151,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'LxI', 
-      side: 'Right Hand', 
-      position: 8, 
-      category: 'Supplier Part',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 120, y: 90, label: 'Supplier Mark', type: 'defect' },
-        { x: 180, y: 150, label: 'Part Number', type: 'inspection' }
+        { x: 120, y: 90, position: 6, category: 'CMM' },
+        { x: 180, y: 150, position: 5, category: 'CMM' }
       ]
     },
     { 
@@ -169,12 +163,10 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'VxI', 
-      side: 'Right Hand', 
-      position: 7, 
-      category: 'All',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 90, y: 110, label: 'Center Point', type: 'measurement' }
+        { x: 90, y: 110, position: 4, category: 'CMM' }
       ]
     },
     { 
@@ -182,13 +174,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'VxI', 
-      side: 'Right Hand', 
-      position: 6, 
-      category: 'CMM',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 60, y: 70, label: 'CMM Point 1', type: 'measurement' },
-        { x: 140, y: 140, label: 'CMM Point 2', type: 'measurement' }
+        { x: 60, y: 70, position: 3, category: 'All' },
+        { x: 140, y: 140, position: 2, category: 'All' }
       ]
     },
     { 
@@ -196,13 +186,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'VxI', 
-      side: 'Right Hand', 
-      position: 5, 
-      category: 'CMM',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1565958011703-44f9829ba187?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 100, y: 50, label: 'Upper Point', type: 'inspection' },
-        { x: 80, y: 160, label: 'Lower Point', type: 'measurement' }
+        { x: 100, y: 50, position: 1, category: 'LD Gap' },
+        { x: 80, y: 160, position: 10, category: 'CMM' }
       ]
     },
     { 
@@ -210,12 +198,10 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'ZxI', 
-      side: 'Right Hand', 
-      position: 4, 
-      category: 'CMM',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1493663284031-b7e3aaa4c4ae?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 130, y: 100, label: 'Critical Point', type: 'defect' }
+        { x: 130, y: 100, position: 9, category: 'LD Gap' }
       ]
     },
     { 
@@ -223,13 +209,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'ZxI', 
-      side: 'Right Hand', 
-      position: 3, 
-      category: 'All',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1605711285791-0219e80e43a3?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 110, y: 80, label: 'Reference', type: 'inspection' },
-        { x: 170, y: 120, label: 'Check Point', type: 'measurement' }
+        { x: 110, y: 80, position: 8, category: 'Supplier Part' },
+        { x: 170, y: 120, position: 7, category: 'All' }
       ]
     },
     { 
@@ -237,12 +221,10 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'ZxI', 
-      side: 'Right Hand', 
-      position: 2, 
-      category: 'All',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 85, y: 95, label: 'Main Point', type: 'measurement' }
+        { x: 85, y: 95, position: 6, category: 'CMM' }
       ]
     },
     { 
@@ -250,13 +232,11 @@ export default function PartsManagementTable() {
       part: 'Door', 
       model: 'YGB', 
       variant: 'ZxI', 
-      side: 'Right Hand', 
-      position: 1, 
-      category: 'LD Gap',
+      side: 'Right Hand',
       imageUrl: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=400&h=300&fit=crop',
       markupPoints: [
-        { x: 95, y: 75, label: 'Gap Measurement', type: 'measurement' },
-        { x: 160, y: 130, label: 'Secondary Gap', type: 'measurement' }
+        { x: 95, y: 75, position: 5, category: 'CMM' },
+        { x: 160, y: 130, position: 4, category: 'CMM' }
       ]
     }
   ];
@@ -358,8 +338,6 @@ export default function PartsManagementTable() {
                     <StyledTableHead>Model</StyledTableHead>
                     <StyledTableHead>Variant</StyledTableHead>
                     <StyledTableHead>Side</StyledTableHead>
-                    <StyledTableHead>Position</StyledTableHead>
-                    <StyledTableHead>Category</StyledTableHead>
                     <StyledTableHead>Actions</StyledTableHead>
                   </TableRow>
                 </TableHead>
@@ -403,16 +381,6 @@ export default function PartsManagementTable() {
                         </Typography>
                       </StyledTableCell>
                       <StyledTableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {item.position}
-                        </Typography>
-                      </StyledTableCell>
-                      <StyledTableCell>
-                        <Typography variant="body2" color="text.secondary">
-                          {item.category}
-                        </Typography>
-                      </StyledTableCell>
-                      <StyledTableCell>
                         <IconButton
                           size="small"
                           onClick={(e) => handleDropdownClick(e, item.id)}
@@ -448,7 +416,7 @@ export default function PartsManagementTable() {
                       />
                       {/* Markup Points Overlay */}
                       {selectedPart.markupPoints.map((point, index) => (
-                        <Tooltip key={index} title={point.label} arrow>
+                        <Tooltip key={index} title={`Position: ${point.position}, Category: ${point.category}`} arrow>
                           <MarkupPoint
                             sx={{
                               left: point.x,
