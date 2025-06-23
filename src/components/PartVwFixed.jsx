@@ -19,6 +19,7 @@ const PartVw = ({ selectedPart }) => {
   });
   
   const imageRefDisplay = useRef(null);
+  const imageContainerRef = useRef(null);
 
   const handleImageLoad = () => {
     if (imageRefDisplay.current) {
@@ -61,7 +62,39 @@ const PartVw = ({ selectedPart }) => {
     };
   }, [imageMetadata.isLoaded]);
 
+  // Fixed positioning calculation
+  const getMarkupPointPosition = (point) => {
+    if (!imageRefDisplay.current || !imageContainerRef.current) {
+      return { left: 0, top: 0 };
+    }
+
+    const img = imageRefDisplay.current;
+    const container = imageContainerRef.current;
+    
+    const imgRect = img.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    
+    // Calculate the position relative to the container
+    const relativeLeft = imgRect.left - containerRect.left;
+    const relativeTop = imgRect.top - containerRect.top;
+    
+    // Calculate the actual pixel position on the image
+    const pixelX = (point.x / 100) * imgRect.width;
+    const pixelY = (point.y / 100) * imgRect.height;
+    
+    // Final position relative to the container
+    const finalLeft = relativeLeft + pixelX;
+    const finalTop = relativeTop + pixelY;
+    
+    return {
+      left: finalLeft,
+      top: finalTop
+    };
+  };
+
   const ScaleInvariantMarkupPoint = ({ point, index }) => {
+    const position = getMarkupPointPosition(point);
+    
     return (
       <Tooltip
         key={index}
@@ -72,8 +105,8 @@ const PartVw = ({ selectedPart }) => {
         <Box
           sx={{
             position: "absolute",
-            left: `${point.x}%`,
-            top: `${point.y}%`,
+            left: `${position.left}px`,
+            top: `${position.top}px`,
             transform: "translate(-50%, -50%)",
             width: 24,
             height: 24,
@@ -145,6 +178,7 @@ const PartVw = ({ selectedPart }) => {
               }}
             >
               <Box
+                ref={imageContainerRef}
                 sx={{
                   display: "flex",
                   justifyContent: "center",
