@@ -982,4 +982,97 @@ relative position regardless of:
 
 The points are truly scale-invariant and will maintain perfect positioning
 across all devices and screen sizes! 🎯
-*/
+*/> variant="caption" sx={{ display: "block" }}>
+                    #{point.position}: {point.category}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          <Button
+            onClick={handlePointSubmit}
+            variant="contained"
+            disabled={!pointData.position || !pointData.category}
+          >
+            Add Point
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default AddPartModal;> variant="caption" sx={{ display: "block" }}>
+                    #{point.position}: {point.category}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          <Button
+            onClick={handlePointSubmit}
+            variant="contained"
+            disabled={!pointData.position || !pointData.category}
+          >
+            Add Point
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default AddPartModal;> variant="caption" sx={{ display: "block" }}>
+                    #{point.position}: {point.category}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          <Button
+            onClick={handlePointSubmit}
+            variant="contained"
+            disabled={!pointData.position || !pointData.category}
+          >
+            Add Point
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default AddPartModal;                {tempMarkupPoints.map((point, index) => (
+                  <Typography key={index} variant="caption" sx={{ display: "block" }}>
+                    #{point.position}: {point.category}
+                  </Typography>
+                ))}
+              </Box>
+            )}
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          <Button
+            onClick={handlePointSubmit}
+            variant="contained"
+            disabled={!pointData.position || !pointData.category}
+          >
+            Add Point
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
+  );
+};
+
+export default AddPartModal;

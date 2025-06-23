@@ -10,7 +10,6 @@ import { PART_VW } from "./constants";
 import { useState, useEffect, useRef } from "react";
 
 const PartVw = ({ selectedPart }) => {
-  // ENHANCED: Better state management for responsive behavior
   const [imageMetadata, setImageMetadata] = useState({
     naturalWidth: 0,
     naturalHeight: 0,
@@ -21,7 +20,6 @@ const PartVw = ({ selectedPart }) => {
   
   const imageRefDisplay = useRef(null);
 
-  // FIXED: Proper image load handler for metadata tracking
   const handleImageLoad = () => {
     if (imageRefDisplay.current) {
       const img = imageRefDisplay.current;
@@ -34,15 +32,9 @@ const PartVw = ({ selectedPart }) => {
         displayHeight: rect.height,
         isLoaded: true,
       });
-      
-      console.log('PartVw image loaded:', {
-        natural: { width: img.naturalWidth, height: img.naturalHeight },
-        display: { width: rect.width, height: rect.height }
-      });
     }
   };
 
-  // RESPONSIVE: Update display dimensions on resize
   const updateDisplaySize = () => {
     if (imageRefDisplay.current && imageMetadata.isLoaded) {
       const rect = imageRefDisplay.current.getBoundingClientRect();
@@ -69,13 +61,6 @@ const PartVw = ({ selectedPart }) => {
     };
   }, [imageMetadata.isLoaded]);
 
-  // REMOVED: Old pixel-based positioning function
-  // const getPixelPosition = (point) => ({
-  //   left: (point.x / 100) * imageSize.width - 12,
-  //   top: (point.y / 100) * imageSize.height - 12,
-  // });
-
-  // ENHANCED: Scale-invariant markup point component
   const ScaleInvariantMarkupPoint = ({ point, index }) => {
     return (
       <Tooltip
@@ -87,10 +72,9 @@ const PartVw = ({ selectedPart }) => {
         <Box
           sx={{
             position: "absolute",
-            // CRITICAL: Use percentage positioning for scale invariance
             left: `${point.x}%`,
             top: `${point.y}%`,
-            transform: "translate(-50%, -50%)", // Perfect centering
+            transform: "translate(-50%, -50%)",
             width: 24,
             height: 24,
             backgroundColor: "white",
@@ -105,7 +89,6 @@ const PartVw = ({ selectedPart }) => {
             zIndex: 10,
             cursor: "pointer",
             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            // RESPONSIVE: Smooth hover transitions
             transition: "all 0.2s ease-in-out",
             "&:hover": {
               transform: "translate(-50%, -50%) scale(1.15)",
@@ -116,8 +99,6 @@ const PartVw = ({ selectedPart }) => {
           }}
           onClick={(e) => {
             e.stopPropagation();
-            console.log('Point clicked:', point);
-            // Optional: Add point details modal or action
           }}
         >
           {point.position}
@@ -154,29 +135,13 @@ const PartVw = ({ selectedPart }) => {
       >
         {selectedPart ? (
           <Box width="100%" display="flex" flexDirection="column">
-            {/* ENHANCED: Debug information for development */}
-            {process.env.NODE_ENV === 'development' && imageMetadata.isLoaded && (
-              <Box sx={{ mb: 1, p: 1, backgroundColor: "#f0f7ff", borderRadius: 1, fontSize: "10px" }}>
-                <Typography variant="caption" sx={{ display: "block" }}>
-                  Part: {selectedPart.part} | Model: {selectedPart.model}
-                </Typography>
-                <Typography variant="caption" sx={{ display: "block" }}>
-                  Image: {imageMetadata.naturalWidth}×{imageMetadata.naturalHeight} 
-                  → Display: {imageMetadata.displayWidth.toFixed(0)}×{imageMetadata.displayHeight.toFixed(0)}
-                </Typography>
-                <Typography variant="caption" sx={{ display: "block" }}>
-                  Points: {selectedPart.selectedMarkupPoint?.length || 0}
-                </Typography>
-              </Box>
-            )}
-
             <Card
               sx={{
                 flex: 1,
                 display: "flex",
                 flexDirection: "column",
                 border: "none",
-                overflow: "visible", // IMPORTANT: Allow points to render outside bounds
+                overflow: "visible",
               }}
             >
               <Box
@@ -187,30 +152,26 @@ const PartVw = ({ selectedPart }) => {
                   position: "relative",
                   width: "100%",
                   height: "100%",
-                  // RESPONSIVE: Ensure clean container for positioning
                   lineHeight: 0,
                 }}
               >
-                {/* ENHANCED: Scale-invariant image display */}
                 <Box
                   component="img"
                   src={selectedPart.imageUrl}
                   alt={`${selectedPart.part} - ${selectedPart.model}`}
                   ref={imageRefDisplay}
-                  onLoad={handleImageLoad} // CRITICAL: Track image load
+                  onLoad={handleImageLoad}
                   sx={{
                     maxWidth: "100%",
                     maxHeight: "100%",
-                    objectFit: "contain", // CRITICAL: Maintain aspect ratio
+                    objectFit: "contain",
                     borderRadius: "16px",
                     display: "block",
                     userSelect: "none",
-                    // RESPONSIVE: Prevent layout issues
                     verticalAlign: "top",
                   }}
                 />
 
-                {/* FIXED: Scale-invariant markup points */}
                 {selectedPart.selectedMarkupPoint && 
                  selectedPart.selectedMarkupPoint.length > 0 &&
                  imageMetadata.isLoaded && (
@@ -225,7 +186,6 @@ const PartVw = ({ selectedPart }) => {
                   </>
                 )}
 
-                {/* ENHANCED: Loading indicator for image */}
                 {!imageMetadata.isLoaded && selectedPart.imageUrl && (
                   <Box
                     sx={{
@@ -247,7 +207,6 @@ const PartVw = ({ selectedPart }) => {
               </Box>
             </Card>
 
-            {/* ENHANCED: Points summary */}
             {selectedPart.selectedMarkupPoint && selectedPart.selectedMarkupPoint.length > 0 && (
               <Box sx={{ mt: 2, p: 2, backgroundColor: "#f8faff", borderRadius: 1 }}>
                 <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
@@ -274,7 +233,6 @@ const PartVw = ({ selectedPart }) => {
             )}
           </Box>
         ) : (
-          // ENHANCED: Empty state with better styling
           <Box
             display="flex"
             flexDirection="column"
@@ -311,87 +269,3 @@ const PartVw = ({ selectedPart }) => {
 };
 
 export default PartVw;
-
-/*
-===========================================
-🎯 SCALE-INVARIANT PART VIEW FIXES
-===========================================
-
-✅ **FIXED: Positioning System**
-- REMOVED: Pixel-based getPixelPosition() function
-- ADDED: Percentage-based positioning with transform centering
-- RESULT: Points maintain exact position across all screen sizes
-
-✅ **ENHANCED: Image Load Handling**
-- ADDED: Proper onLoad handler with metadata tracking
-- TRACKS: Natural vs display dimensions
-- PREVENTS: Rendering points before image is ready
-
-✅ **RESPONSIVE: Resize Handling**
-- ADDED: Debounced resize event listener
-- UPDATES: Display dimensions without affecting point positions
-- OPTIMIZED: Performance with minimal re-renders
-
-✅ **IMPROVED: Point Rendering**
-- USES: ScaleInvariantMarkupPoint component
-- FEATURES: Hover effects, tooltips, click handlers
-- STYLING: Consistent with modern design patterns
-
-✅ **BETTER: Error Prevention**
-- CHECKS: Image loaded before rendering points
-- VALIDATES: Point data exists before mapping
-- HANDLES: Missing or undefined point arrays
-
-✅ **ENHANCED: User Experience**
-- ADDED: Loading indicator for images
-- SHOWS: Points summary with categories
-- DISPLAYS: Debug info in development mode
-- IMPROVED: Empty state styling
-
-✅ **PERFORMANCE: Optimizations**
-- DEBOUNCED: Resize events (100ms delay)
-- EFFICIENT: Point rendering with unique keys
-- MINIMAL: DOM operations during updates
-
-===========================================
-🔧 KEY TECHNICAL CHANGES
-===========================================
-
-**Before (Problematic):**
-```javascript
-const getPixelPosition = (point) => ({
-  left: (point.x / 100) * imageSize.width - 12,
-  top: (point.y / 100) * imageSize.height - 12,
-});
-
-<Box sx={{ 
-  left: `${pixelPos.left}px`, 
-  top: `${pixelPos.top}px` 
-}} />
-```
-
-**After (Scale-Invariant):**
-```javascript
-<Box sx={{
-  left: `${point.x}%`,
-  top: `${point.y}%`,
-  transform: "translate(-50%, -50%)"
-}} />
-```
-
-**Result:**
-- Points now maintain EXACT relative position
-- Works perfectly across ALL screen sizes
-- No more positioning drift or misalignment
-- Truly responsive and scale-invariant behavior
-
-The markup points will now display in the exact same 
-relative position regardless of:
-- Container size changes
-- Window resizing  
-- Screen resolution
-- Device type (mobile/tablet/desktop)
-- Browser zoom levels
-
-Perfect positioning across all devices! 🎯
-*/
