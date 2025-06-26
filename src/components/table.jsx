@@ -17,13 +17,13 @@ import {
   Button,
   Typography,
   Box,
-  Chip,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import WarningIcon from "@mui/icons-material/Warning";
 
+// NEW: Added edit/delete props
 const PartModelTable = ({ 
   setSelectedPart, 
   partsData, 
@@ -31,6 +31,7 @@ const PartModelTable = ({
   onDeleteMarkupPoint, 
   setPartsData 
 }) => {
+  // NEW: State for dropdown menu and delete confirmation
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedRowData, setSelectedRowData] = useState(null);
   const [selectedMarkupPoint, setSelectedMarkupPoint] = useState(null);
@@ -38,7 +39,7 @@ const PartModelTable = ({
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
 
-  // Transform data to table rows format
+  // NEW: Transform data to table rows format
   const tableData = useMemo(() => {
     const rows = [];
     
@@ -82,7 +83,7 @@ const PartModelTable = ({
     return rows;
   }, [partsData]);
 
-  // Handle row click to show part in viewer
+  // NEW: Handle row click to show part in viewer
   const handleRowClick = (rowData) => {
     if (rowData.markupPoint) {
       // Set selected part with the specific markup point highlighted
@@ -101,7 +102,7 @@ const PartModelTable = ({
     }
   };
 
-  // Handle dropdown menu open
+  // NEW: Handle dropdown menu open
   const handleMenuClick = (event, rowData, markupPoint, markupPointIndex) => {
     event.stopPropagation();
     setAnchorEl(event.currentTarget);
@@ -110,7 +111,7 @@ const PartModelTable = ({
     setSelectedMarkupPointIndex(markupPointIndex);
   };
 
-  // Handle dropdown menu close
+  // NEW: Handle dropdown menu close
   const handleMenuClose = () => {
     setAnchorEl(null);
     setSelectedRowData(null);
@@ -118,7 +119,7 @@ const PartModelTable = ({
     setSelectedMarkupPointIndex(-1);
   };
 
-  // Handle edit markup point
+  // NEW: Handle edit markup point
   const handleEditMarkupPoint = (rowData, markupPoint, markupPointIndex) => {
     if (onEditMarkupPoint) {
       onEditMarkupPoint({
@@ -130,7 +131,7 @@ const PartModelTable = ({
     handleMenuClose();
   };
 
-  // Handle delete markup point
+  // NEW: Handle delete markup point
   const handleDeleteMarkupPoint = (itemToDelete) => {
     if (onDeleteMarkupPoint) {
       onDeleteMarkupPoint(itemToDelete);
@@ -140,7 +141,7 @@ const PartModelTable = ({
     handleMenuClose();
   };
 
-  // Handle delete confirmation
+  // NEW: Handle delete confirmation
   const handleDeleteConfirmation = (rowData) => {
     setItemToDelete({
       id: rowData.partId,
@@ -156,100 +157,21 @@ const PartModelTable = ({
     handleMenuClose();
   };
 
-  // Get category color for chips
-  const getCategoryColor = (category) => {
-    switch (category) {
-      case "CMM":
-        return "primary";
-      case "LD Gap":
-        return "secondary";
-      case "Supplier Part":
-        return "success";
-      case "All":
-        return "warning";
-      default:
-        return "default";
-    }
-  };
-
-  // Format position display
-  const formatPosition = (position) => {
-    if (position === "No points" || !position) {
-      return (
-        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
-          No points
-        </Typography>
-      );
-    }
-    return (
-      <Chip
-        label={`#${position}`}
-        size="small"
-        variant="outlined"
-        sx={{
-          fontWeight: 600,
-          minWidth: 50,
-        }}
-      />
-    );
-  };
-
-  // Format category display
-  const formatCategory = (category) => {
-    if (category === "N/A" || !category) {
-      return (
-        <Typography variant="body2" color="text.secondary" sx={{ fontStyle: "italic" }}>
-          N/A
-        </Typography>
-      );
-    }
-    return (
-      <Chip
-        label={category}
-        size="small"
-        color={getCategoryColor(category)}
-        sx={{
-          fontWeight: 500,
-        }}
-      />
-    );
-  };
-
   return (
     <>
+      {/* EXISTING: Your original table with minimal changes */}
       <Paper sx={{ width: "100%", overflow: "hidden", height: "100%" }}>
         <TableContainer sx={{ maxHeight: "calc(100vh - 200px)" }}>
           <Table stickyHeader aria-label="parts table">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Part
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Model
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Variant
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Side
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Position
-                </TableCell>
-                <TableCell sx={{ fontWeight: 600, backgroundColor: "#f5f5f5" }}>
-                  Category
-                </TableCell>
-                <TableCell 
-                  sx={{ 
-                    fontWeight: 600, 
-                    backgroundColor: "#f5f5f5",
-                    width: 60,
-                    textAlign: "center"
-                  }}
-                >
-                  Actions
-                </TableCell>
+                <TableCell>Part</TableCell>
+                <TableCell>Model</TableCell>
+                <TableCell>Variant</TableCell>
+                <TableCell>Side</TableCell>
+                <TableCell>Position</TableCell>
+                <TableCell>Category</TableCell>
+                <TableCell>Actions</TableCell> {/* NEW: Actions column */}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -257,23 +179,17 @@ const PartModelTable = ({
                 <TableRow
                   key={row.id}
                   hover
-                  onClick={() => handleRowClick(row)}
-                  sx={{
-                    cursor: "pointer",
-                    "&:hover": {
-                      backgroundColor: "#f8f9fa",
-                    },
-                  }}
+                  onClick={() => handleRowClick(row)} // NEW: Row click handler
+                  sx={{ cursor: "pointer" }}
                 >
-                  <TableCell sx={{ fontWeight: 500 }}>
-                    {row.part}
-                  </TableCell>
+                  <TableCell>{row.part}</TableCell>
                   <TableCell>{row.model}</TableCell>
                   <TableCell>{row.variant}</TableCell>
                   <TableCell>{row.side}</TableCell>
-                  <TableCell>{formatPosition(row.position)}</TableCell>
-                  <TableCell>{formatCategory(row.category)}</TableCell>
-                  <TableCell sx={{ textAlign: "center", width: 60 }}>
+                  <TableCell>{row.position}</TableCell>
+                  <TableCell>{row.category}</TableCell>
+                  <TableCell>
+                    {/* NEW: Actions dropdown for markup points only */}
                     {row.markupPoint && (
                       <IconButton
                         size="small"
@@ -285,11 +201,6 @@ const PartModelTable = ({
                             row.markupPointIndex
                           )
                         }
-                        sx={{
-                          "&:hover": {
-                            backgroundColor: "rgba(0, 0, 0, 0.04)",
-                          },
-                        }}
                       >
                         <MoreVertIcon fontSize="small" />
                       </IconButton>
@@ -312,18 +223,11 @@ const PartModelTable = ({
         </TableContainer>
       </Paper>
 
-      {/* Actions Dropdown Menu */}
+      {/* NEW: Actions Dropdown Menu */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
         onClose={handleMenuClose}
-        PaperProps={{
-          sx: {
-            boxShadow: "0 4px 20px rgba(0,0,0,0.15)",
-            borderRadius: 2,
-            minWidth: 150,
-          },
-        }}
       >
         <MenuItem
           onClick={() =>
@@ -333,40 +237,20 @@ const PartModelTable = ({
               selectedMarkupPointIndex
             )
           }
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            py: 1.5,
-            "&:hover": {
-              backgroundColor: "#f0f7ff",
-            },
-          }}
         >
-          <EditIcon fontSize="small" color="primary" />
-          <Typography variant="body2">Edit</Typography>
+          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          Edit
         </MenuItem>
         
         <MenuItem
           onClick={() => handleDeleteConfirmation(selectedRowData)}
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 1,
-            py: 1.5,
-            "&:hover": {
-              backgroundColor: "#fff0f0",
-            },
-          }}
         >
-          <DeleteIcon fontSize="small" color="error" />
-          <Typography variant="body2" color="error">
-            Delete
-          </Typography>
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} />
+          Delete
         </MenuItem>
       </Menu>
 
-      {/* Delete Confirmation Dialog */}
+      {/* NEW: Delete Confirmation Dialog */}
       <Dialog
         open={deleteConfirmOpen}
         onClose={() => {
@@ -375,80 +259,37 @@ const PartModelTable = ({
         }}
         maxWidth="sm"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.12)",
-          },
-        }}
       >
-        <DialogTitle 
-          sx={{ 
-            display: "flex", 
-            alignItems: "center", 
-            gap: 1,
-            pb: 2,
-          }}
-        >
+        <DialogTitle sx={{ display: "flex", alignItems: "center", gap: 1 }}>
           <WarningIcon color="warning" />
-          <Typography variant="h6" fontWeight={600}>
-            Confirm Deletion
-          </Typography>
+          Confirm Deletion
         </DialogTitle>
         
-        <DialogContent sx={{ pb: 2 }}>
-          <Typography variant="body1" sx={{ mb: 3 }}>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
             Are you sure you want to delete this markup point? This action cannot be undone.
           </Typography>
           
           {itemToDelete && (
-            <Box
-              sx={{
-                p: 2,
-                backgroundColor: "#f8f9fa",
-                borderRadius: 2,
-                border: "1px solid #e9ecef",
-              }}
-            >
-              <Typography variant="subtitle2" fontWeight={600} sx={{ mb: 1 }}>
+            <Box sx={{ p: 2, backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 Item Details:
               </Typography>
-              <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 1 }}>
-                <Typography variant="body2">
-                  <strong>Part:</strong> {itemToDelete.part}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Model:</strong> {itemToDelete.model}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Variant:</strong> {itemToDelete.variant}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Side:</strong> {itemToDelete.side}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Position:</strong> #{itemToDelete.position}
-                </Typography>
-                <Typography variant="body2">
-                  <strong>Category:</strong> {itemToDelete.category}
-                </Typography>
-              </Box>
+              <Typography variant="body2">Part: {itemToDelete.part}</Typography>
+              <Typography variant="body2">Model: {itemToDelete.model}</Typography>
+              <Typography variant="body2">Variant: {itemToDelete.variant}</Typography>
+              <Typography variant="body2">Side: {itemToDelete.side}</Typography>
+              <Typography variant="body2">Position: #{itemToDelete.position}</Typography>
+              <Typography variant="body2">Category: {itemToDelete.category}</Typography>
             </Box>
           )}
         </DialogContent>
         
-        <DialogActions sx={{ px: 3, pb: 3 }}>
+        <DialogActions>
           <Button
             onClick={() => {
               setDeleteConfirmOpen(false);
               setItemToDelete(null);
-            }}
-            variant="outlined"
-            color="inherit"
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 500,
             }}
           >
             Cancel
@@ -457,15 +298,6 @@ const PartModelTable = ({
             onClick={() => handleDeleteMarkupPoint(itemToDelete)}
             variant="contained"
             color="error"
-            sx={{
-              borderRadius: 2,
-              textTransform: "none",
-              fontWeight: 600,
-              boxShadow: "0 4px 12px rgba(244, 67, 54, 0.3)",
-              "&:hover": {
-                boxShadow: "0 6px 16px rgba(244, 67, 54, 0.4)",
-              },
-            }}
           >
             Delete Point
           </Button>
