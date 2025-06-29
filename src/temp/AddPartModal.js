@@ -117,6 +117,62 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     }
   }, [editMode, editData, open]);
 
+  // Handle point drag in edit mode
+  const handlePointMouseDown = (event, pointIndex) => {
+    if (!editMode) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+    setDragPointIndex(pointIndex);
+  };
+
+  const handleMouseMove = (event) => {
+    if (!editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
+
+    event.preventDefault();
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, xPercent));
+    const clampedY = Math.max(0, Math.min(100, yPercent));
+
+    // Update the point position while dragging
+    setTempMarkupPoints(prev => 
+      prev.map((point, index) => 
+        index === dragPointIndex 
+          ? { ...point, x: clampedX, y: clampedY }
+          : point
+      )
+    );
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragPointIndex(null);
+  };
+
+  // Handle point click for editing in edit mode
+  const handlePointClick = (event, pointIndex) => {
+    if (!editMode || isDragging) return;
+    
+    event.stopPropagation();
+    const point = tempMarkupPoints[pointIndex];
+    setPointData({ 
+      position: point.position.toString(), 
+      category: point.category 
+    });
+    setCurrentPoint({ x: point.x, y: point.y });
+    setEditingPointIndex(pointIndex);
+    setPointModal(true);
+  };
+
   const [imageDisplay, setImageDisplay] = useState({
     width: 0,
     height: 0,
@@ -156,7 +212,14 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
 
   const hanldeOnNext = (e) => {
     if (editMode && step === 2) {
-      // In edit mode, submit from step 2
+      // In edit mode, go from step 2 to step 3 for review
+      setStep(3);
+      setIsDisabled(false);
+      return;
+    }
+
+    if (editMode && step === 3) {
+      // In edit mode, submit from step 3
       const data = mapDataRecord();
       resetData();
       onNext(data);
@@ -189,7 +252,12 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
       onClose(resetData);
     } else {
       setIsDisabled(false);
-      setStep((prevStep) => prevStep - 1);
+      if (editMode && step === 3) {
+        // In edit mode, go back from step 3 to step 2
+        setStep(2);
+      } else {
+        setStep((prevStep) => prevStep - 1);
+      }
     }
   };
 
@@ -250,61 +318,6 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     setPointModal(true);
     setPointData({ position: "", category: "" });
     setEditingPointIndex(null);
-  };
-
-  const handlePointMouseDown = (event, pointIndex) => {
-    if (!editMode) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(true);
-    setDragPointIndex(pointIndex);
-  };
-
-  const handleMouseMove = (event) => {
-    if (!editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
-
-    event.preventDefault();
-    const img = imageRef.current;
-    const rect = img.getBoundingClientRect();
-
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
-
-    const clampedX = Math.max(0, Math.min(100, xPercent));
-    const clampedY = Math.max(0, Math.min(100, yPercent));
-
-    // Update the point position while dragging
-    setTempMarkupPoints(prev => 
-      prev.map((point, index) => 
-        index === dragPointIndex 
-          ? { ...point, x: clampedX, y: clampedY }
-          : point
-      )
-    );
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setDragPointIndex(null);
-  };
-
-  // Handle point click for editing in edit mode
-  const handlePointClick = (event, pointIndex) => {
-    if (!editMode || isDragging) return;
-    
-    event.stopPropagation();
-    const point = tempMarkupPoints[pointIndex];
-    setPointData({ 
-      position: point.position.toString(), 
-      category: point.category 
-    });
-    setCurrentPoint({ x: point.x, y: point.y });
-    setEditingPointIndex(pointIndex);
-    setPointModal(true);
   };
 
   const handlePointSubmit = () => {
@@ -797,7 +810,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
           </DialogContent>
         )}
 
-        {!editMode && step === 3 && (
+        {(step === 3 || (editMode && step === 3)) && (
           <DialogContent sx={{ pt: 3 }}>
             <Box
               sx={{
@@ -910,7 +923,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
             }}
             disabled={
               editMode 
-                ? isDisabled
+                ? step === 3 ? false : isDisabled
                 : step === 1
                   ? isDisabled || progress < 100
                   : step === 3
@@ -919,7 +932,14 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
             }
             onClick={hanldeOnNext}
           >
-            {editMode ? "Submit" : step == 3 ? ADD_MDL?.BTN_LBL4 : ADD_MDL?.BTN_LBL2}
+            {editMode 
+              ? step === 3 
+                ? "Submit" 
+                : "Next"
+              : step == 3 
+                ? ADD_MDL?.BTN_LBL4 
+                : ADD_MDL?.BTN_LBL2
+            }
           </PrimaryButton>
         </DialogActions>
 
