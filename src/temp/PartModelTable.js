@@ -16,7 +16,7 @@ import {
   MoreVert as MoreVertIcon,
 } from '@mui/icons-material';
 
-export default function PartModelTable({setSelectedPart,partsData, onEdit, onDelete}) {
+export default function PartModelTable({setSelectedPart, partsData, onEdit, onDelete}) {
   const [selectedRow, setSelectedRow] = useState({ id: null, position: null });
   const [searchQuery, setSearchQuery] = useState('');
   const [anchorEl, setAnchorEl] = useState(null);
@@ -27,13 +27,20 @@ export default function PartModelTable({setSelectedPart,partsData, onEdit, onDel
       value.toString().toLowerCase().includes(searchQuery.toLowerCase())
     )
   ).flatMap(part =>
-    part.markupPoints.map(point => ({...point, id: part.id, part: part.part, model: part.model, variant: part.variant, side: part.side, imageUrl: part.imageUrl}))
-  ).sort((a, b) => - b.position - a.position);
-  ;
+    part.markupPoints.map(point => ({
+      ...point,
+      id: part.id,
+      part: part.part,
+      model: part.model,
+      variant: part.variant,
+      side: part.side,
+      imageUrl: part.imageUrl
+    }))
+  ).sort((a, b) => b.position - a.position);
 
-  const handleRowSelect = (id,position,category) => {
+  const handleRowSelect = (id, position, category) => {
     if (selectedRow.id === id && selectedRow.position === position && selectedRow.category === category) {
-      setSelectedRow({ id: null, position: null, position: null });
+      setSelectedRow({ id: null, position: null, category: null });
       setSelectedPart(null);
     } else {
       setSelectedRow({ id, position, category });
@@ -61,9 +68,9 @@ export default function PartModelTable({setSelectedPart,partsData, onEdit, onDel
 
   const handleDropdownAction = (action, item) => {
     if (action === 'edit') {
-      onEdit(item);
+      onEdit(item.id, item.position, item.category);
     } else if (action === 'delete') {
-      onDelete(item);
+      onDelete(item.id, item.position, item.category);
     }
     handleDropdownClose();
   };
@@ -72,14 +79,13 @@ export default function PartModelTable({setSelectedPart,partsData, onEdit, onDel
     <>
       {/* Table Section */}
       <TableSection>
-        <TableContainer
-          sx={{
-            flex: 1,
-            overflow: 'auto',
-            borderRadius: "16px",
-            border: "none",boxShadow: "none",
-          }}
-        >
+        <TableContainer sx={{
+          flex: 1,
+          overflow: 'auto',
+          borderRadius: "16px",
+          border: "none",
+          boxShadow: "none",
+        }}>
           <Table stickyHeader>
             <TableHead>
               <TableRow>
@@ -94,12 +100,15 @@ export default function PartModelTable({setSelectedPart,partsData, onEdit, onDel
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredData.map((item,index) => (
+              {filteredData.map((item, index) => (
                 <TableRow
-                  key={`${item.id}-${item.position}-${item.category}`}
+                  key={index}
                   hover
                   selected={
-                    selectedRow.id === item.id && selectedRow.position === item.position && selectedRow.category === item.category}
+                    selectedRow.id === item.id &&
+                    selectedRow.position === item.position &&
+                    selectedRow.category === item.category
+                  }
                   sx={{
                     '&.Mui-selected': {
                       backgroundColor: '#e3f2fd',
@@ -109,8 +118,11 @@ export default function PartModelTable({setSelectedPart,partsData, onEdit, onDel
                   <StyledTableCell>
                     <Checkbox
                       checked={
-                        selectedRow.id === item.id && selectedRow.position === item.position && selectedRow.category === item.category}
-                      onChange={() => handleRowSelect(item.id,item.position,item.category)}
+                        selectedRow.id === item.id &&
+                        selectedRow.position === item.position &&
+                        selectedRow.category === item.category
+                      }
+                      onChange={() => handleRowSelect(item.id, item.position, item.category)}
                       color="primary"
                     />
                   </StyledTableCell>

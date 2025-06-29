@@ -6,12 +6,12 @@ import AddPartModal from "./components/AddPartMdl";
 import PartModelTable from "./components/PartMdlTbl";
 import PartVw from "./components/PartVw";
 import Alert from "../../components/Alert";
+import { ContentContainer } from "./styles/AnnotationStyles";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from "@mui/material";
-import {ContentContainer} from "./styles/AnnotationStyles";
 
 const Annotations = () => {
-  const [isDataAdded,setIsDataAdded] = useState(false)
-  const [partsData,setFormData] = useState([
+  const [isDataAdded, setIsDataAdded] = useState(false);
+  const [partsData, setFormData] = useState([
     {
       id: 1,
       part: 'Door',
@@ -220,80 +220,115 @@ const Annotations = () => {
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedPart, setSelectedPart] = useState(null);
-  const [editingData, setEditingData] = useState(null);
-  const [confirmDialog, setConfirmDialog] = useState({
-    open: false,
-    type: '',
-    data: null,
-    message: ''
-  });
+  
+  // Edit functionality states
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editData, setEditData] = useState(null);
+  const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+  const [pendingEditData, setPendingEditData] = useState(null);
+  
+  // Delete functionality states
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
+  const [deleteData, setDeleteData] = useState(null);
 
   const handleSearchChange = (e) => {
     setSearch(e.target.value);
   };
 
   const onNext = (partData) => {
-    const randomId = Math.floor(Math.random() * 1_000_000)+ 101;
+    const randomId = Math.floor(Math.random() * 1_000_000) + 101;
     const newPartData = { ...partData, id: randomId };
-    setFormData((prev)=>[...prev,newPartData])
+    setFormData((prev) => [...prev, newPartData]);
     setModalOpen(false);
-    setIsDataAdded(true)
-  }
-
-  const handleEdit = (itemData) => {
-    const partData = partsData.find(part => part.id === itemData.id);
-    if (partData) {
-      setEditingData(partData);
-      setModalOpen(true);
-    }
+    setIsDataAdded(true);
   };
 
-  const handleEditSubmit = (updatedData) => {
-    setConfirmDialog({
-      open: true,
-      type: 'edit',
-      data: updatedData,
-      message: 'Are you sure you want to edit this part?'
-    });
-  };
-
-  const handleDelete = (itemData) => {
-    setConfirmDialog({
-      open: true,
-      type: 'delete',
-      data: itemData,
-      message: 'Are you sure you want to delete this point?'
-    });
-  };
-
-  const handleConfirmAction = () => {
-    if (confirmDialog.type === 'edit') {
-      setFormData(prev => prev.map(part => 
-        part.id === confirmDialog.data.id ? confirmDialog.data : part
-      ));
-      setModalOpen(false);
-      setEditingData(null);
-      setIsDataAdded(true);
-    } else if (confirmDialog.type === 'delete') {
-      const { id, position, category } = confirmDialog.data;
-      setFormData(prev => prev.map(part => {
-        if (part.id === id) {
-          return {
-            ...part,
-            markupPoints: part.markupPoints.filter(point => 
-              !(point.position === position && point.category === category)
-            )
-          };
-        }
-        return part;
-      }));
-    }
+  // Edit functionality handlers
+  const handleEdit = (itemId, position, category) => {
+    const partToEdit = partsData.find(part => part.id === itemId);
+    const markupPointToEdit = partToEdit?.markupPoints?.find(
+      mp => mp.position === position && mp.category === category
+    );
     
-    setConfirmDialog({ open: false, type: '', data: null, message: '' });
+    if (partToEdit && markupPointToEdit) {
+      setEditData({
+        partData: partToEdit,
+        markupPoint: markupPointToEdit,
+        originalPosition: position,
+        originalCategory: category
+      });
+      setEditModalOpen(true);
+    }
   };
 
-  const handleCancelAction = () => {
-    setConfirmDialog({ open: false, type: '', data: null, message: '' });
+  const onEditNext = (updatedPartData) => {
+    setPendingEditData(updatedPartData);
+    setEditModalOpen(false);
+    setEditConfirmOpen(true);
+  };
+
+  const confirmEdit = () => {
+    if (pendingEditData && editData) {
+      setFormData(prevData => 
+        prevData.map(part => {
+          if (part.id === editData.partData.id) {
+            // Update the specific markup point
+            const updatedMarkupPoints = part.markupPoints.map(mp => {
+              if (mp.position === editData.originalPosition && mp.category === editData.originalCategory) {
+                // Find the updated markup point from pendingEditData
+                const updatedPoint = pendingEditData.markupPoints.find(
+                  newMp => newMp.position === editData.originalPosition || 
+                          newMp.category === editData.originalCategory
+                ) || pendingEditData.markupPoints[0]; // fallback to first point
+                return updatedPoint;
+              }
+              return mp;
+            });
+            return { ...part, markupPoints: updatedMarkupPoints };
+          }
+          return part;
+        })
+      );
+      setEditConfirmOpen(false);
+      setPendingEditData(null);
+      setEditData(null);
+      setIsDataAdded(true);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditConfirmOpen(false);
+    setPendingEditData(null);
+  };
+
+  // Delete functionality handlers
+  const handleDelete = (itemId, position, category) => {
+    setDeleteData({ itemId, position, category });
+    setDeleteConfirmOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (deleteData) {
+      setFormData(prevData => 
+        prevData.map(part => {
+          if (part.id === deleteData.itemId) {
+            const updatedMarkupPoints = part.markupPoints.filter(
+              mp => !(mp.position === deleteData.position && mp.category === deleteData.category)
+            );
+            return { ...part, markupPoints: updatedMarkupPoints };
+          }
+          return part;
+        }).filter(part => part.markupPoints.length > 0) // Remove parts with no markup points
+      );
+      setDeleteConfirmOpen(false);
+      setDeleteData(null);
+      setIsDataAdded(true);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirmOpen(false);
+    setDeleteData(null);
   };
 
   return (
@@ -305,10 +340,7 @@ const Annotations = () => {
         filterIcon={filterLatest}
         onFilterClick={() => console.log("Filter Clicked")}
         filterLabel={HDR_CONST?.FTR_BTN_LBL}
-        onAddClick={() => {
-          setEditingData(null);
-          setModalOpen(true);
-        }}
+        onAddClick={() => setModalOpen(true)}
         addLabel={HDR_CONST?.ADD_BTN_LBL}
       />
 
@@ -317,10 +349,20 @@ const Annotations = () => {
         onClose={(fn) => {
           fn();
           setModalOpen(false);
-          setEditingData(null);
         }}
-        onNext={editingData ? handleEditSubmit : onNext}
-        editingData={editingData}
+        onNext={onNext}
+      />
+
+      <AddPartModal
+        open={editModalOpen}
+        onClose={(fn) => {
+          fn();
+          setEditModalOpen(false);
+          setEditData(null);
+        }}
+        onNext={onEditNext}
+        editMode={true}
+        editData={editData}
       />
 
       <Alert
@@ -338,27 +380,33 @@ const Annotations = () => {
         }}
       />
 
-      <Dialog
-        open={confirmDialog.open}
-        onClose={handleCancelAction}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>Confirm Action</DialogTitle>
+      {/* Edit Confirmation Dialog */}
+      <Dialog open={editConfirmOpen} onClose={cancelEdit}>
+        <DialogTitle>Confirm Edit</DialogTitle>
         <DialogContent>
-          <Typography>{confirmDialog.message}</Typography>
+          <Typography>Do you really want to edit this markup point?</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCancelAction}>No</Button>
-          <Button onClick={handleConfirmAction} variant="contained" color="primary">
-            Yes
-          </Button>
+          <Button onClick={cancelEdit}>No</Button>
+          <Button onClick={confirmEdit} variant="contained">Yes</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmOpen} onClose={cancelDelete}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <Typography>Do you really want to delete this markup point?</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDelete}>No</Button>
+          <Button onClick={confirmDelete} variant="contained" color="error">Yes</Button>
         </DialogActions>
       </Dialog>
 
       <ContentContainer>
-        <PartModelTable
-          setSelectedPart={setSelectedPart}
+        <PartModelTable 
+          setSelectedPart={setSelectedPart} 
           partsData={partsData}
           onEdit={handleEdit}
           onDelete={handleDelete}
