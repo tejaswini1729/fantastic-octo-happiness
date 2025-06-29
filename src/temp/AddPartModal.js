@@ -320,6 +320,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     setEditingPointIndex(null);
   };
 
+
   const handlePointSubmit = () => {
     if (pointData.position && pointData.category) {
       const newPoint = {
@@ -911,7 +912,14 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
             }}
             name={step === 1 ? ADD_MDL?.BTN_LBL1 : ADD_MDL?.BTN_LBL3}
           >
-            {editMode ? "Cancel" : step === 1 ? ADD_MDL?.BTN_LBL1 : ADD_MDL?.BTN_LBL3}
+            {editMode 
+              ? step === 3 
+                ? "Back" 
+                : "Cancel"
+              : step === 1 
+                ? ADD_MDL?.BTN_LBL1 
+                : ADD_MDL?.BTN_LBL3
+            }
           </SecondaryButton>
           <PrimaryButton
             sx={{
