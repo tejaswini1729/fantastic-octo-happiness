@@ -79,6 +79,8 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
   const imageRef = useRef(null);
   const [hasVisitedStep2, setHasVisitedStep2] = useState(false);
   const [editingPointIndex, setEditingPointIndex] = useState(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPointIndex, setDragPointIndex] = useState(null);
 
   const resetData = () => {
     setForm(initialFormData);
@@ -104,6 +106,12 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
       setStep(2); // Start from step 2 in edit mode
       setHasVisitedStep2(true);
       setProgress(100);
+      
+      // Pre-fill the point data for editing
+      setPointData({
+        position: editData.markupPoint.position.toString(),
+        category: editData.markupPoint.category
+      });
     } else if (!editMode) {
       resetData();
     }
@@ -244,9 +252,49 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     setEditingPointIndex(null);
   };
 
+  const handlePointMouseDown = (event, pointIndex) => {
+    if (!editMode) return;
+    
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(true);
+    setDragPointIndex(pointIndex);
+  };
+
+  const handleMouseMove = (event) => {
+    if (!editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
+
+    event.preventDefault();
+    const img = imageRef.current;
+    const rect = img.getBoundingClientRect();
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
+
+    const clampedX = Math.max(0, Math.min(100, xPercent));
+    const clampedY = Math.max(0, Math.min(100, yPercent));
+
+    // Update the point position while dragging
+    setTempMarkupPoints(prev => 
+      prev.map((point, index) => 
+        index === dragPointIndex 
+          ? { ...point, x: clampedX, y: clampedY }
+          : point
+      )
+    );
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragPointIndex(null);
+  };
+
   // Handle point click for editing in edit mode
   const handlePointClick = (event, pointIndex) => {
-    if (!editMode) return;
+    if (!editMode || isDragging) return;
     
     event.stopPropagation();
     const point = tempMarkupPoints[pointIndex];
@@ -651,7 +699,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
               <Box>
                 <Typography variant="body2" color="black" sx={{ mb: 1 }}>
                   {editMode 
-                    ? "Click on points to edit position and category, or click on image to move point:" 
+                    ? "Drag points to move them, or click on points to edit position and category:" 
                     : "Click on the image to add markup points:"
                   }
                 </Typography>
@@ -670,7 +718,10 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                       height: "auto",
                       display: "inline-block",
                     }}
-                    onClick={handleImageClick}
+                    onClick={!editMode ? handleImageClick : undefined}
+                    onMouseMove={handleMouseMove}
+                    onMouseUp={handleMouseUp}
+                    onMouseLeave={handleMouseUp}
                   >
                     <Box
                       component="img"
@@ -681,14 +732,17 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                         width: "100%",
                         height: "100%",
                         objectFit: "contain",
-                        cursor: "crosshair",
+                        cursor: editMode ? (isDragging ? "grabbing" : "grab") : "crosshair",
                         display: "block",
                         borderRadius: "16px",
+                        userSelect: "none",
                       }}
+                      draggable={false}
                     />
                     {tempMarkupPoints.map((point, index) => (
                       <Box
                         key={index}
+                        onMouseDown={editMode ? (e) => handlePointMouseDown(e, index) : undefined}
                         onClick={editMode ? (e) => handlePointClick(e, index) : undefined}
                         sx={{
                           position: "absolute",
@@ -697,7 +751,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                           width: 24,
                           height: 24,
                           backgroundColor: "white",
-                          border: "2px solid black",
+                          border: editMode && dragPointIndex === index ? "3px solid #3F57FF" : "2px solid black",
                           borderRadius: "50%",
                           display: "flex",
                           alignItems: "center",
@@ -706,10 +760,12 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                           fontWeight: 500,
                           color: "black",
                           zIndex: 10,
-                          cursor: editMode ? "pointer" : "default",
+                          cursor: editMode ? (isDragging && dragPointIndex === index ? "grabbing" : "grab") : "default",
+                          userSelect: "none",
                           "&:hover": editMode ? {
                             backgroundColor: "#f0f0f0",
-                            transform: "scale(1.1)"
+                            transform: dragPointIndex === index ? "none" : "scale(1.1)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
                           } : {}
                         }}
                       >
@@ -718,6 +774,24 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                     ))}
                   </Box>
                 </Card>
+                
+                {/* Show current values in edit mode */}
+                {editMode && tempMarkupPoints.length > 0 && (
+                  <Box sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5", borderRadius: 1 }}>
+                    <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+                      Current Values:
+                    </Typography>
+                    <Typography variant="body2">
+                      Position: <strong>{tempMarkupPoints[0].position}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      Category: <strong>{tempMarkupPoints[0].category}</strong>
+                    </Typography>
+                    <Typography variant="body2" sx={{ fontSize: 11, color: "text.secondary", mt: 1 }}>
+                      Click the point to edit these values
+                    </Typography>
+                  </Box>
+                )}
               </Box>
             )}
           </DialogContent>
