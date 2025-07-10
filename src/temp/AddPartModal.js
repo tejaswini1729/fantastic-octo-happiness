@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import PrimaryButton from "../../../components/Buttons/PrimaryButton/PrimaryButton";
 import SecondaryButton from "../../../components/Buttons/SecondaryButton/SecondaryButton";
 import Alert from "../../../components/Alert";
+import info_sb from "../../../assets/icons/info_sb.svg";
+import directions from "../../../assets/images/directions.svg";
 import {
   Dialog,
   DialogTitle,
@@ -52,26 +54,64 @@ const sideOptions = [
   { key: "leftHand", label: "Left Hand" },
 ];
 
-const categoryOptions = ["CMM", "LD Gap", "Supplier Part", "All"];
 
-const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null }) => {
+const categoryOptions = [
+  { key: "cmm", label: "CMM" },
+  { key: "ldGap", label: "LD Gap" },
+  { key: "supplierPart", label: "Supplier Part" },
+  { key: "all", label: "All" },
+];
+
+const positionOptions = {
+  cmm: [
+    { key: "21", label: "21" },
+    { key: "22", label: "22" },
+    { key: "23", label: "23" },
+  ],
+  ldGap: [
+    { key: "31", label: "31" },
+    { key: "32", label: "32" },
+    { key: "33", label: "33" },
+  ],
+  supplierPart: [
+    { key: "41", label: "41" },
+    { key: "42", label: "42" },
+    { key: "43", label: "43" },
+  ],
+  all: [
+    { key: "54", label: "54" },
+    { key: "55", label: "55" },
+    { key: "56", label: "56" },
+    { key: "57", label: "57" },
+    { key: "58", label: "58" },
+  ],
+};
+
+
+
+const AddPartModal = ({
+  open,
+  onClose,
+  onNext,
+  editMode = false,
+  editData = null,
+}) => {
   const initialFormData = {
     part: "",
     model: "",
     variant: "",
+    side: "",
     image: null,
     imageUrl: null,
   };
 
   const initial_tm_Data = [];
-  const initialSideData = "";
 
   const [form, setForm] = useState(initialFormData);
   const [tempMarkupPoints, setTempMarkupPoints] = useState(initial_tm_Data);
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
   const [pointModal, setPointModal] = useState(false);
   const [pointData, setPointData] = useState({ position: "", category: "" });
-  const [side, setSide] = useState(initialSideData);
   const [isDisabled, setIsDisabled] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -85,7 +125,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
   const resetData = () => {
     setForm(initialFormData);
     setTempMarkupPoints(initial_tm_Data);
-    setSide(initialSideData);
+    // setSide(initialSideData);
     setStep(1);
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
@@ -98,28 +138,29 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
         part: editData.partData.part,
         model: editData.partData.model,
         variant: editData.partData.variant,
+        side: editData.partData.side,
         image: { name: "existing-image" }, // Mock file object
         imageUrl: editData.partData.imageUrl,
       });
-      setSide(editData.partData.side);
+      // setSide(editData.partData.side);
       setTempMarkupPoints([editData.markupPoint]);
       setStep(2); // Start from step 2 in edit mode
       setHasVisitedStep2(true);
       setProgress(100);
-      
+
       // Pre-fill the point data for editing
       setPointData({
         position: editData.markupPoint.position.toString(),
-        category: editData.markupPoint.category
+        category: editData.markupPoint.category,
       });
     } else if (!editMode) {
       resetData();
     }
   }, [editMode, editData, open]);
 
-  // Handle point drag in edit mode
+  // Handle point drag for Add Part mode only
   const handlePointMouseDown = (event, pointIndex) => {
-    if (!editMode) return;
+    if (editMode) return; // Only allow dragging in Add Part mode, not Edit mode
     
     event.preventDefault();
     event.stopPropagation();
@@ -128,7 +169,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
   };
 
   const handleMouseMove = (event) => {
-    if (!editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
+    if (editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
 
     event.preventDefault();
     const img = imageRef.current;
@@ -144,9 +185,9 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     const clampedY = Math.max(0, Math.min(100, yPercent));
 
     // Update the point position while dragging
-    setTempMarkupPoints(prev => 
-      prev.map((point, index) => 
-        index === dragPointIndex 
+    setTempMarkupPoints((prev) =>
+      prev.map((point, index) =>
+        index === dragPointIndex
           ? { ...point, x: clampedX, y: clampedY }
           : point
       )
@@ -158,19 +199,28 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     setDragPointIndex(null);
   };
 
-  // Handle point click for editing in edit mode
+  // Handle point click for editing in Add Part mode
   const handlePointClick = (event, pointIndex) => {
-    if (!editMode || isDragging) return;
-    
+    if (editMode || isDragging) return; // Only allow in Add Part mode
+
     event.stopPropagation();
     const point = tempMarkupPoints[pointIndex];
-    setPointData({ 
-      position: point.position.toString(), 
-      category: point.category 
+    setPointData({
+      position: point.position.toString(),
+      category: point.category,
     });
     setCurrentPoint({ x: point.x, y: point.y });
     setEditingPointIndex(pointIndex);
     setPointModal(true);
+  };
+
+  // Handle point deletion in Add Part mode
+  const handleDeletePoint = (pointIndex) => {
+    if (editMode) return; // Only allow deletion in Add Part mode
+    
+    setTempMarkupPoints((prev) => prev.filter((_, index) => index !== pointIndex));
+    setPointModal(false);
+    setEditingPointIndex(null);
   };
 
   const [imageDisplay, setImageDisplay] = useState({
@@ -198,7 +248,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
       part: form.part,
       model: form.model,
       variant: form.variant,
-      side: side,
+      side: form.side,
       imageUrl: form.imageUrl,
       markupPoints: tempMarkupPoints.map((point) => ({
         x: point.x,
@@ -320,7 +370,6 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     setEditingPointIndex(null);
   };
 
-
   const handlePointSubmit = () => {
     if (pointData.position && pointData.category) {
       const newPoint = {
@@ -332,8 +381,8 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
 
       if (editingPointIndex !== null) {
         // Update existing point
-        setTempMarkupPoints((prev) => 
-          prev.map((point, index) => 
+        setTempMarkupPoints((prev) =>
+          prev.map((point, index) =>
             index === editingPointIndex ? newPoint : point
           )
         );
@@ -355,7 +404,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
   useEffect(() => {
     if (editMode) {
       // In edit mode, only check if we have points and side
-      if (tempMarkupPoints.length > 0 && side) {
+      if (tempMarkupPoints.length > 0) {
         setIsDisabled(false);
       } else {
         setIsDisabled(true);
@@ -364,19 +413,18 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
     }
 
     const hasEmpty = Object.values(form).some((value) => !value);
-    console.log("Form data changed:", form);
     setIsDisabled(hasEmpty);
-  }, [form, editMode, tempMarkupPoints, side]);
+  }, [form, editMode, tempMarkupPoints]);
 
   useEffect(() => {
     if (step === 2) {
-      if (tempMarkupPoints.length > 0 && side) {
+      if (tempMarkupPoints.length > 0) {
         setIsDisabled(false);
       } else {
         setIsDisabled(true);
       }
     }
-  }, [tempMarkupPoints, side]);
+  }, [tempMarkupPoints]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -417,14 +465,13 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
               color: "#000000",
             }}
           >
-            {editMode 
-              ? "Edit Markup Point" 
-              : step === 1 
-                ? ADD_MDL?.TTL1 
-                : step === 2 
-                  ? ADD_MDL?.TTL2 
-                  : ADD_MDL?.TTL3
-            }
+            {editMode
+              ? "Edit Markup Point"
+              : step === 1
+              ? ADD_MDL?.TTL1
+              : step === 2
+              ? ADD_MDL?.TTL2
+              : ADD_MDL?.TTL3}
           </Typography>
           <IconButton
             onClick={handleChange}
@@ -509,6 +556,23 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                 ))}
               </Select>
             </FormControl>
+            {/* Side Dropdown */}
+            <FormControl fullWidth sx={{ mb: 3 }}>
+              <InputLabel id="side-label">Side</InputLabel>
+              <Select
+                labelId="side-label"
+                value={form.side}
+                label="Side"
+                onChange={(e) => handleChange("side", e.target.value)}
+                disabled={editMode} // Disable side editing in edit mode
+              >
+                {sideOptions.map((option) => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
 
             {/* Image Drop Zone */}
             {form?.image ? (
@@ -560,7 +624,9 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                       letterSpacing: "0%",
                     }}
                   >
-                    {typeof form.image.size === 'number' ? bytesToSize(form.image.size) : 'Unknown size'}
+                    {typeof form.image.size === "number"
+                      ? bytesToSize(form.image.size)
+                      : "Unknown size"}
                   </Typography>
                   <Box sx={{ mt: 1 }}>
                     <LinearProgress
@@ -594,7 +660,9 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                   }}
                 >
                   <IconButton onClick={handleDelete}>
-                    <DeleteIcon sx={{ width: 20, height: 20, color: "#363939" }} />
+                    <DeleteIcon
+                      sx={{ width: 20, height: 20, color: "#363939" }}
+                    />
                   </IconButton>
                 </Box>
               </Box>
@@ -690,39 +758,82 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
         )}
 
         {step === 2 && (
-          <DialogContent sx={{ pt: 3 }}>
-            <FormControl fullWidth sx={{ mb: 3 }}>
-              <InputLabel id="side-label">Side</InputLabel>
-              <Select
-                labelId="side-label"
-                value={side}
-                label="Side"
-                onChange={(e) => setSide(e.target.value)}
-                disabled={editMode} // Disable side editing in edit mode
-              >
-                {sideOptions.map((option) => (
-                  <MenuItem key={option.key} value={option.key}>
-                    {option.label}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-
+          <DialogContent sx={{ pt: "10px" }}>
             {/* Image Display with Markup Points */}
             {form.imageUrl && (
               <Box>
-                <Typography variant="body2" color="black" sx={{ mb: 1 }}>
-                  {editMode 
-                    ? "Drag points to move them, or click on points to edit position and category:" 
-                    : "Click on the image to add markup points:"
-                  }
-                </Typography>
+                <Box
+                  display="flex"
+                  gap="8px"
+                  sx={{
+                    border: "1px solid #298BED",
+                    borderRadius: "4px",
+                    backgroundColor: "#F3F9FF",
+                    padding: "10px",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={info_sb}
+                      alt="Description"
+                      sx={{
+                        width: "auto",
+                        height: "auto",
+                      }}
+                    />
+                  </Box>
+                  <Box>
+                    <Typography
+                      variant="body2"
+                      color="black"
+                      sx={{
+                        mb: 1,
+                        fontFamily: "Plus Jakarta Sans",
+                        lineHeight: "120%",
+                        letterSpacing: "0px",
+                        verticalAlign: "middle",
+                        fontSize: "14px",
+                      }}
+                    >
+                      {editMode ? (
+                        "This is the markup point for the part. You can view the details below."
+                      ) : (
+                        <>
+                          <span
+                            style={{
+                              fontWeight: 600,
+                            }}
+                          >
+                            Note:
+                          </span>
+                          <span> </span>
+                          <span
+                            style={{
+                              fontWeight: 400,
+                            }}
+                          >
+                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to edit, or right-click to delete.
+                          </span>
+                        </>
+                      )}
+                    </Typography>
+                  </Box>
+                </Box>
                 <Card
                   sx={{
                     width: "100%",
                     backgroundColor: "#FFFFFF",
                     border: "1px solid #E3E3F1",
                     padding: "4px",
+                    mt: "10px",
                   }}
                 >
                   <Box
@@ -746,7 +857,11 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                         width: "100%",
                         height: "100%",
                         objectFit: "contain",
-                        cursor: editMode ? (isDragging ? "grabbing" : "grab") : "crosshair",
+                        cursor: editMode
+                          ? "default"
+                          : isDragging
+                          ? "grabbing"
+                          : "crosshair",
                         display: "block",
                         borderRadius: "16px",
                         userSelect: "none",
@@ -756,8 +871,12 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                     {tempMarkupPoints.map((point, index) => (
                       <Box
                         key={index}
-                        onMouseDown={editMode ? (e) => handlePointMouseDown(e, index) : undefined}
-                        onClick={editMode ? (e) => handlePointClick(e, index) : undefined}
+                        onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
+                        onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
+                        onContextMenu={!editMode ? (e) => {
+                          e.preventDefault();
+                          handleDeletePoint(index);
+                        } : undefined}
                         sx={{
                           position: "absolute",
                           left: `calc(${point.x}% - 12px)`,
@@ -765,7 +884,9 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                           width: 24,
                           height: 24,
                           backgroundColor: "white",
-                          border: editMode && dragPointIndex === index ? "3px solid #3F57FF" : "2px solid black",
+                          border: !editMode && dragPointIndex === index
+                            ? "3px solid #3F57FF"
+                            : "2px solid black",
                           borderRadius: "50%",
                           display: "flex",
                           alignItems: "center",
@@ -774,25 +895,42 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                           fontWeight: 500,
                           color: "black",
                           zIndex: 10,
-                          cursor: editMode ? (isDragging && dragPointIndex === index ? "grabbing" : "grab") : "default",
+                          cursor: editMode
+                            ? "default"
+                            : isDragging && dragPointIndex === index
+                            ? "grabbing"
+                            : "grab",
                           userSelect: "none",
-                          "&:hover": editMode ? {
+                          transition: "all 0.2s ease",
+                          "&:hover": !editMode ? {
                             backgroundColor: "#f0f0f0",
                             transform: dragPointIndex === index ? "none" : "scale(1.1)",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)"
-                          } : {}
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                          } : {},
                         }}
+                        title={!editMode ? "Drag to move, click to edit, right-click to delete" : ""}
                       >
                         {point.position}
                       </Box>
                     ))}
                   </Box>
                 </Card>
-                
+
                 {/* Show current values in edit mode */}
                 {editMode && tempMarkupPoints.length > 0 && (
-                  <Box sx={{ mt: 2, p: 2, backgroundColor: "#f5f5f5", borderRadius: 1 }}>
-                    <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>
+                  <Box
+                    sx={{
+                      mt: 2,
+                      p: 2,
+                      backgroundColor: "#f5f5f5",
+                      borderRadius: 1,
+                    }}
+                  >
+                    <Typography
+                      variant="body2"
+                      fontWeight="medium"
+                      sx={{ mb: 1 }}
+                    >
                       Current Values:
                     </Typography>
                     <Typography variant="body2">
@@ -801,7 +939,10 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                     <Typography variant="body2">
                       Category: <strong>{tempMarkupPoints[0].category}</strong>
                     </Typography>
-                    <Typography variant="body2" sx={{ fontSize: 11, color: "text.secondary", mt: 1 }}>
+                    <Typography
+                      variant="body2"
+                      sx={{ fontSize: 11, color: "text.secondary", mt: 1 }}
+                    >
                       Click the point to edit these values
                     </Typography>
                   </Box>
@@ -813,6 +954,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
 
         {(step === 3 || (editMode && step === 3)) && (
           <DialogContent sx={{ pt: 3 }}>
+            {console.log("I am caled123", form)}
             <Box
               sx={{
                 display: "flex",
@@ -869,10 +1011,10 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                   Variant: <strong>{form.variant}</strong>
                 </Typography>
                 <Typography>
-                  Side: <strong>{side}</strong>
+                  Side: <strong>{form.side}</strong>
                 </Typography>
                 <Typography>
-                  Markup Points:{" "}
+                  Position Added :
                   <strong>
                     {tempMarkupPoints.length > 0
                       ? tempMarkupPoints.map((point, index) => (
@@ -885,7 +1027,7 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                   </strong>
                 </Typography>
                 <Typography>
-                  Category:{" "}
+                  Category:
                   <strong>
                     {tempMarkupPoints.length > 0
                       ? tempMarkupPoints.map((point, index) => (
@@ -912,14 +1054,13 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
             }}
             name={step === 1 ? ADD_MDL?.BTN_LBL1 : ADD_MDL?.BTN_LBL3}
           >
-            {editMode 
-              ? step === 3 
-                ? "Back" 
+            {editMode
+              ? step === 3
+                ? "Back"
                 : "Cancel"
-              : step === 1 
-                ? ADD_MDL?.BTN_LBL1 
-                : ADD_MDL?.BTN_LBL3
-            }
+              : step === 1
+              ? ADD_MDL?.BTN_LBL1
+              : ADD_MDL?.BTN_LBL3}
           </SecondaryButton>
           <PrimaryButton
             sx={{
@@ -930,24 +1071,25 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
               letterSpacing: "-2.5%",
             }}
             disabled={
-              editMode 
-                ? step === 3 ? false : isDisabled
+              editMode
+                ? step === 3
+                  ? false
+                  : isDisabled
                 : step === 1
-                  ? isDisabled || progress < 100
-                  : step === 3
-                    ? false
-                    : isDisabled
+                ? isDisabled || progress !== 100
+                : step === 3
+                ? false
+                : isDisabled
             }
             onClick={hanldeOnNext}
           >
-            {editMode 
-              ? step === 3 
-                ? "Submit" 
+            {editMode
+              ? step === 3
+                ? "Submit"
                 : "Next"
-              : step == 3 
-                ? ADD_MDL?.BTN_LBL4 
-                : ADD_MDL?.BTN_LBL2
-            }
+              : step == 3
+              ? ADD_MDL?.BTN_LBL4
+              : ADD_MDL?.BTN_LBL2}
           </PrimaryButton>
         </DialogActions>
 
@@ -974,25 +1116,20 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
         fullWidth
       >
         <DialogTitle>
-          {editingPointIndex !== null ? "Edit Markup Point" : "Add Markup Point"}
+          {editingPointIndex !== null
+            ? "Edit Markup Point"
+            : "Add Markup Point"}
         </DialogTitle>
         <DialogContent sx={{ pt: 3 }}>
           <Box display="flex" flexDirection="column" gap={3}>
-            <TextField
-              label="Position"
-              type="number"
-              value={pointData.position}
-              required
-              inputProps={{ min: 0 }}
-              helperText={"Position must be a non-negative number"}
-              onChange={(e) =>
-                setPointData((prev) => ({
-                  ...prev,
-                  position: e.target.value,
-                }))
-              }
-              fullWidth
-              variant="outlined"
+            <Box
+              component="img"
+              src={directions}
+              alt="Graph"
+              sx={{
+                display: "block",
+                maxWidth: "100%", 
+              }}
             />
             <FormControl fullWidth variant="outlined">
               <InputLabel>Category</InputLabel>
@@ -1007,8 +1144,28 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
                 label="Category"
               >
                 {categoryOptions.map((option) => (
-                  <MenuItem key={option} value={option}>
-                    {option}
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth variant="outlined">
+              <InputLabel>Position</InputLabel>
+              <Select
+                value={pointData.position}
+                onChange={(e) =>
+                  setPointData((prev) => ({
+                    ...prev,
+                    position: e.target.value,
+                  }))
+                }
+                label="Position"
+                disabled={!pointData.category}
+              >
+                {(positionOptions[pointData.category] || []).map((option) => (
+                  <MenuItem key={option.key} value={option.key}>
+                    {option.label}
                   </MenuItem>
                 ))}
               </Select>
@@ -1017,6 +1174,15 @@ const AddPartModal = ({ open, onClose, onNext, editMode = false, editData = null
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          {!editMode && editingPointIndex !== null && (
+            <Button
+              onClick={() => handleDeletePoint(editingPointIndex)}
+              color="error"
+              startIcon={<DeleteIcon />}
+            >
+              Delete Point
+            </Button>
+          )}
           <Button
             onClick={handlePointSubmit}
             variant="contained"
