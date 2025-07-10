@@ -123,6 +123,7 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+  const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
 
   // Get existing image data for the current configuration
   const getExistingImageData = () => {
@@ -285,6 +286,7 @@ const AddPartModal = ({
     setStep(1);
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
+    setIsManuallyUploaded(false);
   };
 
   // Debug: Log when modal opens and existingPartsData changes
@@ -300,7 +302,7 @@ const AddPartModal = ({
 
   // Auto-load image when configuration matches existing part
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl) {
+    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded) {
       console.log("Checking for existing image data...", {
         part: form.part,
         model: form.model,
@@ -543,6 +545,7 @@ const AddPartModal = ({
     
     handleChange("image", null);
     handleChange("imageUrl", null);
+    setIsManuallyUploaded(false); // Reset manual upload flag when deleting
     setProgress(0);
     setTempMarkupPoints([]); // Clear all points when image is deleted
   };
@@ -632,6 +635,7 @@ const AddPartModal = ({
       }
 
       handleChange("image", file);
+      setIsManuallyUploaded(true); // Mark as manually uploaded
       const reader = new FileReader();
       reader.onload = (e) => {
         handleChange("imageUrl", e.target.result);
