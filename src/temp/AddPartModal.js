@@ -354,10 +354,18 @@ const AddPartModal = ({
   };
 
   const handleDelete = () => {
+    // Check if there are existing markup points (read-only points)
+    const hasExistingPoints = tempMarkupPoints.some(point => point.isReadOnly);
+    
+    if (hasExistingPoints && form.image?.isAutoLoaded) {
+      // Don't allow deletion if there are existing points and image is auto-loaded
+      return;
+    }
+    
     handleChange("image", null);
     handleChange("imageUrl", null);
     setProgress(0);
-    setTempMarkupPoints([]);
+    setTempMarkupPoints([]); // Clear all points when image is deleted
   };
 
   function mapDataRecord() {
@@ -758,7 +766,9 @@ const AddPartModal = ({
                   >
                     {typeof form.image.size === "number"
                       ? bytesToSize(form.image.size)
-                      : "Unknown size"}
+                      : form.image.isAutoLoaded 
+                        ? "Auto-loaded from existing configuration"
+                        : "Unknown size"}
                   </Typography>
                   <Box sx={{ mt: 1 }}>
                     <LinearProgress
@@ -791,9 +801,25 @@ const AddPartModal = ({
                     alignItems: "flex-center",
                   }}
                 >
-                  <IconButton onClick={handleDelete}>
+                  <IconButton 
+                    onClick={handleDelete}
+                    disabled={form.image?.isAutoLoaded && tempMarkupPoints.some(point => point.isReadOnly)}
+                    sx={{
+                      opacity: (form.image?.isAutoLoaded && tempMarkupPoints.some(point => point.isReadOnly)) ? 0.5 : 1,
+                      cursor: (form.image?.isAutoLoaded && tempMarkupPoints.some(point => point.isReadOnly)) ? 'not-allowed' : 'pointer'
+                    }}
+                    title={
+                      (form.image?.isAutoLoaded && tempMarkupPoints.some(point => point.isReadOnly)) 
+                        ? "Cannot delete image with existing markup points"
+                        : "Delete image"
+                    }
+                  >
                     <DeleteIcon
-                      sx={{ width: 20, height: 20, color: "#363939" }}
+                      sx={{ 
+                        width: 20, 
+                        height: 20, 
+                        color: (form.image?.isAutoLoaded && tempMarkupPoints.some(point => point.isReadOnly)) ? "#999" : "#363939"
+                      }}
                     />
                   </IconButton>
                 </Box>
