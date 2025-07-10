@@ -369,13 +369,36 @@ const AddPartModal = ({
       });
       
       // Set all markup points for the image, with the selected one marked as editable
-      const allMarkupPoints = editData.partData.markupPoints || [];
+      // In edit mode, we want to show ALL points for this image, not just from the current part
+      const currentPart = editData.partData.part;
+      const currentModel = editData.partData.model;
+      const currentVariant = editData.partData.variant;
+      const currentSide = editData.partData.side;
+      
+      // Find all parts with same configuration (same image)
+      const allPartsForImage = existingPartsData.filter(part => 
+        part.part === currentPart &&
+        part.model === currentModel &&
+        part.variant === currentVariant &&
+        part.side === currentSide
+      );
+      
+      // Get all markup points from all parts for this image
+      const allMarkupPointsForImage = allPartsForImage.flatMap(part => 
+        part.markupPoints ? part.markupPoints.map(point => ({
+          ...point,
+          isReadOnly: true, // Mark all as read-only initially
+          isEditable: false
+        })) : []
+      );
+      
       const editablePoint = editData.markupPoint;
       
-      // Mark the editable point and set all points
-      setTempMarkupPoints(allMarkupPoints.map(point => ({
+      // Mark only the selected point as editable
+      setTempMarkupPoints(allMarkupPointsForImage.map(point => ({
         ...point,
-        isEditable: point.position === editablePoint.position && point.category === editablePoint.category
+        isEditable: point.position === editablePoint.position && point.category === editablePoint.category,
+        isReadOnly: !(point.position === editablePoint.position && point.category === editablePoint.category)
       })));
       
       setStep(2); // Start from step 2 in edit mode
@@ -1270,6 +1293,37 @@ const AddPartModal = ({
                       const isReadOnly = point.isReadOnly;
                       const isCurrentlyDragging = !editMode && dragPointIndex === index;
                       
+                      // Enhanced color coding for edit mode
+                      let borderColor, backgroundColor, opacity;
+                      if (editMode) {
+                        if (point.isEditable) {
+                          // Editable point in edit mode - bright green
+                          borderColor = isCurrentlyDragging ? "4px solid #00C851" : "3px solid #00C851";
+                          backgroundColor = "white";
+                          opacity = 1;
+                        } else {
+                          // Read-only points in edit mode - gray
+                          borderColor = "2px solid #999999";
+                          backgroundColor = "#f5f5f5";
+                          opacity = 0.7;
+                        }
+                      } else {
+                        // Add mode color coding (existing logic)
+                        if (isReadOnly) {
+                          borderColor = "2px solid #666666";
+                          backgroundColor = "white";
+                          opacity = 0.6;
+                        } else if (isCurrentlyDragging) {
+                          borderColor = "3px solid #3F57FF";
+                          backgroundColor = "white";
+                          opacity = 1;
+                        } else {
+                          borderColor = "2px solid #3F57FF";
+                          backgroundColor = "white";
+                          opacity = 1;
+                        }
+                      }
+                      
                       return (
                         <Box
                           key={index}
@@ -1281,14 +1335,8 @@ const AddPartModal = ({
                             top: `calc(${point.y}% - 12px)`,
                             width: 24,
                             height: 24,
-                            backgroundColor: "white",
-                            border: isReadOnly
-                              ? "2px solid #666666" // Gray for read-only existing points
-                              : isEditable && isCurrentlyDragging
-                              ? "3px solid #3F57FF"
-                              : isEditable
-                              ? "2px solid #3F57FF" // Blue for editable points
-                              : "2px solid #000000", // Black for other read-only points
+                            backgroundColor: backgroundColor,
+                            border: borderColor,
                             borderRadius: "50%",
                             display: "flex",
                             alignItems: "center",
@@ -1304,21 +1352,21 @@ const AddPartModal = ({
                               : "grab",
                             userSelect: "none",
                             transition: "all 0.2s ease",
-                            opacity: isReadOnly ? 0.6 : (isEditable ? 1 : 0.7), // More transparent for read-only
+                            opacity: opacity,
                             "&:hover": isEditable && !isReadOnly ? {
-                              backgroundColor: "#f0f0f0",
+                              backgroundColor: editMode ? "#f0fff0" : "#f0f0f0",
                               transform: dragPointIndex === index ? "none" : "scale(1.1)",
                               boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                             } : {},
                           }}
                           title={
-                            isReadOnly
+                            editMode
+                              ? point.isEditable
+                                ? "Editable point (drag to move, click to edit)"
+                                : "Read-only point from other parts"
+                              : isReadOnly
                               ? "Existing point (read-only)"
-                              : !isEditable
-                              ? "Read-only point"
-                              : !editMode
-                              ? "Drag to move, click to edit"
-                              : "Drag to move, click to edit (editable point)"
+                              : "Drag to move, click to edit"
                           }
                         >
                           {point.position}
