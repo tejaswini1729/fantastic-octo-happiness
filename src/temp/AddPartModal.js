@@ -334,7 +334,7 @@ const AddPartModal = ({
         console.log("No existing image data found");
       }
     }
-  }, [form.part, form.model, form.variant, form.side]);
+  }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData]);
 
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
@@ -635,10 +635,12 @@ const AddPartModal = ({
       const reader = new FileReader();
       reader.onload = (e) => {
         handleChange("imageUrl", e.target.result);
-        setTempMarkupPoints([]);
+        setTempMarkupPoints([]); // Clear points when new image is uploaded
       };
       reader.onerror = () => {
         console.error("File reading error");
+        setSnackbarMessage("Error reading file. Please try again.");
+        setSnackbarSeverity("error");
         setSnackbarOpen(true);
       };
       reader.readAsDataURL(file);
