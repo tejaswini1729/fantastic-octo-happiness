@@ -112,6 +112,7 @@ const AddPartModal = ({
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
   const [pointModal, setPointModal] = useState(false);
   const [pointData, setPointData] = useState({ position: "", category: "" });
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   const [isDisabled, setIsDisabled] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -121,8 +122,6 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
-  const [selectedPointIndex, setSelectedPointIndex] = useState(null);
-  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
 
   const resetData = () => {
     setForm(initialFormData);
@@ -176,34 +175,12 @@ const AddPartModal = ({
     event.preventDefault();
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
-    
-    // Same calculation as in handleImageClick
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
-    const scaleX = containerWidth / naturalWidth;
-    const scaleY = containerHeight / naturalHeight;
-    const scale = Math.min(scaleX, scaleY);
-    const displayedWidth = naturalWidth * scale;
-    const displayedHeight = naturalHeight * scale;
-    const offsetX = (containerWidth - displayedWidth) / 2;
-    const offsetY = (containerHeight - displayedHeight) / 2;
-    
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-    
-    // Check if within image bounds
-    if (clickX < offsetX || clickX > offsetX + displayedWidth ||
-        clickY < offsetY || clickY > offsetY + displayedHeight) {
-      return;
-    }
-    
-    const relativeX = clickX - offsetX;
-    const relativeY = clickY - offsetY;
-    
-    const xPercent = (relativeX / displayedWidth) * 100;
-    const yPercent = (relativeY / displayedHeight) * 100;
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
 
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
@@ -228,30 +205,31 @@ const AddPartModal = ({
     if (editMode || isDragging) return; // Only allow in Add Part mode
 
     event.stopPropagation();
+    const point = tempMarkupPoints[pointIndex];
+    setPointData({
+      position: point.position.toString(),
+      category: point.category,
+    });
+    setCurrentPoint({ x: point.x, y: point.y });
     
-    // If clicking on already selected point, open edit modal
-    if (selectedPointIndex === pointIndex) {
-      const point = tempMarkupPoints[pointIndex];
-      setPointData({
-        position: point.position.toString(),
-        category: point.category,
-      });
-      setCurrentPoint({ x: point.x, y: point.y });
-      setEditingPointIndex(pointIndex);
-      setPointModal(true);
-      setSelectedPointIndex(null);
-    } else {
-      // Select the point to show X icon
-      setSelectedPointIndex(pointIndex);
-    }
+    // Calculate modal position relative to the point click
+    const modalX = event.clientX + 20; // 20px offset to the right
+    const modalY = event.clientY - 100; // 100px offset upwards
+    
+    // Ensure modal doesn't go off-screen
+    const adjustedX = Math.min(modalX, window.innerWidth - 400); // assuming modal width ~400px
+    const adjustedY = Math.max(modalY, 50); // minimum 50px from top
+    
+    setModalPosition({ x: adjustedX, y: adjustedY });
+    setEditingPointIndex(pointIndex);
+    setPointModal(true);
   };
 
-  // Handle X icon click to delete point
+  // Handle point deletion in Add Part mode
   const handleDeletePoint = (pointIndex) => {
     if (editMode) return; // Only allow deletion in Add Part mode
     
     setTempMarkupPoints((prev) => prev.filter((_, index) => index !== pointIndex));
-    setSelectedPointIndex(null);
     setPointModal(false);
     setEditingPointIndex(null);
   };
@@ -385,74 +363,29 @@ const AddPartModal = ({
     event.preventDefault();
     event.stopPropagation();
 
-    // Clear any selected point when clicking on empty area
-    setSelectedPointIndex(null);
-
-    // Don't add new points in edit mode
-    if (editMode) return;
-
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
-    
-    // Get natural image dimensions
-    const naturalWidth = img.naturalWidth;
-    const naturalHeight = img.naturalHeight;
-    
-    // Get container dimensions
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
-    
-    // Calculate the scale to fit the image in the container (object-fit: contain)
-    const scaleX = containerWidth / naturalWidth;
-    const scaleY = containerHeight / naturalHeight;
-    const scale = Math.min(scaleX, scaleY);
-    
-    // Calculate actual displayed image dimensions
-    const displayedWidth = naturalWidth * scale;
-    const displayedHeight = naturalHeight * scale;
-    
-    // Calculate the offset (letterbox space)
-    const offsetX = (containerWidth - displayedWidth) / 2;
-    const offsetY = (containerHeight - displayedHeight) / 2;
-    
-    // Get click position relative to container
-    const clickX = event.clientX - rect.left;
-    const clickY = event.clientY - rect.top;
-    
-    // Check if click is within the actual image area
-    if (clickX < offsetX || clickX > offsetX + displayedWidth ||
-        clickY < offsetY || clickY > offsetY + displayedHeight) {
-      // Click is in letterbox area, ignore it
-      return;
-    }
-    
-    // Calculate position relative to the actual image
-    const relativeX = clickX - offsetX;
-    const relativeY = clickY - offsetY;
-    
-    // Convert to percentage of the displayed image
-    const xPercent = (relativeX / displayedWidth) * 100;
-    const yPercent = (relativeY / displayedHeight) * 100;
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const xPercent = (x / rect.width) * 100;
+    const yPercent = (y / rect.height) * 100;
 
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
 
-    console.log("Click analysis:", {
-      naturalWidth, naturalHeight,
-      containerWidth, containerHeight,
-      scale, displayedWidth, displayedHeight,
-      offsetX, offsetY,
-      clickX, clickY, relativeX, relativeY,
-      xPercent, yPercent, clampedX, clampedY
-    });
-
-    // Set modal position near the click point
-    setModalPosition({
-      x: event.clientX,
-      y: event.clientY
-    });
-
     setCurrentPoint({ x: clampedX, y: clampedY });
+    
+    // Calculate modal position relative to the click point
+    const modalX = event.clientX + 20; // 20px offset to the right
+    const modalY = event.clientY - 100; // 100px offset upwards
+    
+    // Ensure modal doesn't go off-screen
+    const adjustedX = Math.min(modalX, window.innerWidth - 400); // assuming modal width ~400px
+    const adjustedY = Math.max(modalY, 50); // minimum 50px from top
+    
+    setModalPosition({ x: adjustedX, y: adjustedY });
     setPointModal(true);
     setPointData({ position: "", category: "" });
     setEditingPointIndex(null);
@@ -466,8 +399,6 @@ const AddPartModal = ({
         position: parseInt(pointData.position),
         category: pointData.category,
       };
-
-      console.log("Adding point:", newPoint);
 
       if (editingPointIndex !== null) {
         // Update existing point
@@ -910,7 +841,7 @@ const AddPartModal = ({
                               fontWeight: 400,
                             }}
                           >
-                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to select them, or click again to edit.
+                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to edit, or right-click to delete.
                           </span>
                         </>
                       )}
@@ -933,7 +864,7 @@ const AddPartModal = ({
                       height: "auto",
                       display: "inline-block",
                     }}
-                    onClick={handleImageClick}
+                    onClick={!editMode ? handleImageClick : undefined}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
@@ -958,91 +889,51 @@ const AddPartModal = ({
                       }}
                       draggable={false}
                     />
-                    {tempMarkupPoints.map((point, index) => {
-                      // Simple rendering using the same coordinate system as storage
-                      return (
-                        <Box key={index} sx={{ position: "relative" }}>
-                          {/* Main Point */}
-                          <Box
-                            onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
-                            onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
-                            sx={{
-                              position: "absolute",
-                              left: `${point.x}%`,
-                              top: `${point.y}%`,
-                              transform: "translate(-50%, -50%)",
-                              width: 24,
-                              height: 24,
-                              backgroundColor: "white",
-                              border: !editMode && dragPointIndex === index
-                                ? "3px solid #3F57FF"
-                                : selectedPointIndex === index
-                                ? "2px solid #FF6B6B"
-                                : "2px solid black",
-                              borderRadius: "50%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontSize: 12,
-                              fontWeight: 500,
-                              color: "black",
-                              zIndex: 10,
-                              cursor: editMode
-                                ? "default"
-                                : isDragging && dragPointIndex === index
-                                ? "grabbing"
-                                : "grab",
-                              userSelect: "none",
-                              transition: "all 0.2s ease",
-                              "&:hover": !editMode ? {
-                                backgroundColor: "#f0f0f0",
-                                transform: dragPointIndex === index ? "translate(-50%, -50%)" : "translate(-50%, -50%) scale(1.1)",
-                                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                              } : {},
-                            }}
-                            title={!editMode ? "Drag to move, click to select, click again to edit" : ""}
-                          >
-                            {point.position}
-                          </Box>
-                          
-                          {/* X Delete Icon - only show when point is selected */}
-                          {!editMode && selectedPointIndex === index && (
-                            <Box
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeletePoint(index);
-                              }}
-                              sx={{
-                                position: "absolute",
-                                left: `${point.x}%`,
-                                top: `${point.y}%`,
-                                transform: "translate(50%, -150%)",
-                                width: 16,
-                                height: 16,
-                                backgroundColor: "#FF6B6B",
-                                border: "1px solid white",
-                                borderRadius: "50%",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                fontSize: 10,
-                                fontWeight: "bold",
-                                color: "white",
-                                cursor: "pointer",
-                                zIndex: 15,
-                                "&:hover": {
-                                  backgroundColor: "#FF5252",
-                                  transform: "translate(50%, -150%) scale(1.1)",
-                                },
-                              }}
-                              title="Delete point"
-                            >
-                              ×
-                            </Box>
-                          )}
-                        </Box>
-                      );
-                    })}
+                    {tempMarkupPoints.map((point, index) => (
+                      <Box
+                        key={index}
+                        onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
+                        onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
+                        onContextMenu={!editMode ? (e) => {
+                          e.preventDefault();
+                          handleDeletePoint(index);
+                        } : undefined}
+                        sx={{
+                          position: "absolute",
+                          left: `calc(${point.x}% - 12px)`,
+                          top: `calc(${point.y}% - 12px)`,
+                          width: 24,
+                          height: 24,
+                          backgroundColor: "white",
+                          border: !editMode && dragPointIndex === index
+                            ? "3px solid #3F57FF"
+                            : "2px solid black",
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: "black",
+                          zIndex: 10,
+                          cursor: editMode
+                            ? "default"
+                            : isDragging && dragPointIndex === index
+                            ? "grabbing"
+                            : "grab",
+                          userSelect: "none",
+                          transition: "all 0.2s ease",
+                          "&:hover": !editMode ? {
+                            backgroundColor: "#f0f0f0",
+                            transform: dragPointIndex === index ? "none" : "scale(1.1)",
+                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                          } : {},
+                        }}
+                        title={!editMode ? "Drag to move, click to edit, right-click to delete" : ""}
+                      >
+                        {point.position}
+                      </Box>
+                    ))}
                   </Box>
                 </Card>
 
@@ -1244,17 +1135,20 @@ const AddPartModal = ({
         onClose={() => setPointModal(false)}
         maxWidth="sm"
         fullWidth
-        sx={{
-          '& .MuiDialog-container': {
-            '& .MuiPaper-root': {
-              position: 'fixed',
-              left: `${modalPosition.x + 20}px`,
-              top: `${modalPosition.y - 100}px`,
-              margin: 0,
-              maxWidth: '400px',
-              width: 'auto',
-            },
-          },
+        PaperProps={{
+          style: {
+            position: 'fixed',
+            left: modalPosition.x,
+            top: modalPosition.y,
+            margin: 0,
+            maxWidth: '400px',
+            width: '400px'
+          }
+        }}
+        BackdropProps={{
+          style: {
+            backgroundColor: 'transparent'
+          }
         }}
       >
         <DialogTitle>
@@ -1316,6 +1210,15 @@ const AddPartModal = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPointModal(false)}>Cancel</Button>
+          {!editMode && editingPointIndex !== null && (
+            <Button
+              onClick={() => handleDeletePoint(editingPointIndex)}
+              color="error"
+              startIcon={<DeleteIcon />}
+            >
+              Delete Point
+            </Button>
+          )}
           <Button
             onClick={handlePointSubmit}
             variant="contained"
