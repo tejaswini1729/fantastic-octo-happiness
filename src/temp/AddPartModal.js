@@ -845,7 +845,11 @@ const AddPartModal = ({
               : ADD_MDL?.TTL3}
           </Typography>
           <IconButton
-            onClick={handleClose}
+            onClick={(e) => {
+              // Create a proper event object with the name
+              const syntheticEvent = { target: { name: ADD_MDL?.BTN_LBL1 } };
+              handleClose(syntheticEvent);
+            }}
             sx={{
               position: "absolute",
               top: 0,
@@ -1488,7 +1492,12 @@ const AddPartModal = ({
 
         <DialogActions sx={{ justifyContent: "flex-end", p: 3, pt: 2 }}>
           <SecondaryButton
-            onClick={handleClose}
+            onClick={(e) => {
+              // Create a proper event object with the name
+              const buttonName = step === 1 ? ADD_MDL?.BTN_LBL1 : ADD_MDL?.BTN_LBL3;
+              const syntheticEvent = { target: { name: buttonName } };
+              handleClose(syntheticEvent);
+            }}
             sx={{
               fontSize: "14px !important",
               lineHeight: "16px",
