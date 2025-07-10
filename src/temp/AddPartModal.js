@@ -123,6 +123,38 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+
+  // Get existing image data for the current configuration
+  const getExistingImageData = () => {
+    if (!form.part || !form.model || !form.variant || !form.side || !existingPartsData) {
+      return null;
+    }
+
+    // Find a part with same configuration (part, model, variant, side)
+    const matchingPart = existingPartsData.find(part => 
+      part.part === form.part &&
+      part.model === form.model &&
+      part.variant === form.variant &&
+      part.side === form.side
+    );
+
+    if (matchingPart) {
+      // Extract filename from image URL or create a generic name
+      const filename = matchingPart.imageName || 
+                     (matchingPart.imageUrl ? 
+                      matchingPart.imageUrl.split('/').pop() || 'existing-image.jpg' : 
+                      'existing-image.jpg');
+      
+      return {
+        imageUrl: matchingPart.imageUrl,
+        imageName: filename,
+        imageSize: matchingPart.imageSize || null // If size is stored
+      };
+    }
+
+    return null;
+  };
+
   // Get existing points for the current image configuration (for Add mode)
   const getExistingPointsForImage = () => {
     if (editMode || !form.part || !form.model || !form.variant || !form.side) {
@@ -192,6 +224,39 @@ const AddPartModal = ({
     setEditingPointIndex(null);
   };
 
+  // Auto-load image when configuration matches existing part
+  useEffect(() => {
+    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl) {
+      console.log("Checking for existing image data...", {
+        part: form.part,
+        model: form.model,
+        variant: form.variant,
+        side: form.side,
+        existingPartsData: existingPartsData
+      });
+      
+      const existingImageData = getExistingImageData();
+      console.log("Found existing image data:", existingImageData);
+      
+      if (existingImageData) {
+        // Auto-load the existing image with proper file data
+        handleChange("image", { 
+          name: existingImageData.imageName,
+          size: existingImageData.imageSize,
+          isAutoLoaded: true
+        });
+        handleChange("imageUrl", existingImageData.imageUrl);
+        setProgress(100);
+        
+        // Load existing points after image is set
+        setTimeout(() => {
+          const existingPoints = getExistingPointsForImage();
+          setTempMarkupPoints(existingPoints);
+        }, 100);
+      }
+    }
+  }, [form.part, form.model, form.variant, form.side]);
+
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
     if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData) {
@@ -200,7 +265,7 @@ const AddPartModal = ({
       const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
       setTempMarkupPoints([...existingPoints, ...newPoints]);
     }
-  }, [form.part, form.model, form.variant, form.side, form.imageUrl]);
+  }, [form.imageUrl]); // Only trigger when imageUrl changes
 
   // Initialize edit mode data
   useEffect(() => {
