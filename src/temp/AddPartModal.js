@@ -144,7 +144,17 @@ const AddPartModal = ({
         imageUrl: editData.partData.imageUrl,
       });
       // setSide(editData.partData.side);
-      setTempMarkupPoints([editData.markupPoint]);
+      
+      // Set all markup points for the image, with the selected one marked as editable
+      const allMarkupPoints = editData.partData.markupPoints || [];
+      const editablePoint = editData.markupPoint;
+      
+      // Mark the editable point and set all points
+      setTempMarkupPoints(allMarkupPoints.map(point => ({
+        ...point,
+        isEditable: point.position === editablePoint.position && point.category === editablePoint.category
+      })));
+      
       setStep(2); // Start from step 2 in edit mode
       setHasVisitedStep2(true);
       setProgress(100);
@@ -159,18 +169,27 @@ const AddPartModal = ({
     }
   }, [editMode, editData, open]);
 
-  // Handle point drag for Add Part mode only
+  // Handle point drag for Add Part mode and editable points in Edit mode
   const handlePointMouseDown = (event, pointIndex) => {
-    if (editMode) return; // Only allow dragging in Add Part mode, not Edit mode
+    const point = tempMarkupPoints[pointIndex];
     
-    event.preventDefault();
-    event.stopPropagation();
-    setIsDragging(true);
-    setDragPointIndex(pointIndex);
+    // In edit mode, only allow dragging the editable point
+    if (editMode && !point.isEditable) return;
+    // In add mode, allow dragging any point
+    if (!editMode || (editMode && point.isEditable)) {
+      event.preventDefault();
+      event.stopPropagation();
+      setIsDragging(true);
+      setDragPointIndex(pointIndex);
+    }
   };
 
   const handleMouseMove = (event) => {
-    if (editMode || !isDragging || dragPointIndex === null || !imageRef.current) return;
+    if (!isDragging || dragPointIndex === null || !imageRef.current) return;
+    
+    const point = tempMarkupPoints[dragPointIndex];
+    // In edit mode, only allow moving the editable point
+    if (editMode && !point.isEditable) return;
 
     event.preventDefault();
     const img = imageRef.current;
@@ -200,12 +219,16 @@ const AddPartModal = ({
     setDragPointIndex(null);
   };
 
-  // Handle point click for editing in Add Part mode
+  // Handle point click for editing
   const handlePointClick = (event, pointIndex) => {
-    if (editMode || isDragging) return; // Only allow in Add Part mode
+    const point = tempMarkupPoints[pointIndex];
+    
+    // In edit mode, only allow clicking the editable point
+    if (editMode && !point.isEditable) return;
+    // In add mode, allow clicking any point if not dragging
+    if (!editMode && isDragging) return;
 
     event.stopPropagation();
-    const point = tempMarkupPoints[pointIndex];
     setPointData({
       position: point.position.toString(),
       category: point.category,
@@ -266,6 +289,7 @@ const AddPartModal = ({
         y: point.y,
         position: point.position,
         category: point.category,
+        // Don't include isEditable in the final data
       })),
     };
     return data;
@@ -841,7 +865,7 @@ const AddPartModal = ({
                               fontWeight: 400,
                             }}
                           >
-                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to edit, or right-click to delete.
+                            Tap the uploaded part image to place points. Once placed, you can drag points to move them or click to edit.
                           </span>
                         </>
                       )}
@@ -889,78 +913,92 @@ const AddPartModal = ({
                       }}
                       draggable={false}
                     />
-                    {tempMarkupPoints.map((point, index) => (
-                      <Box
-                        key={index}
-                        onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
-                        onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
-                        sx={{
-                          position: "absolute",
-                          left: `calc(${point.x}% - 12px)`,
-                          top: `calc(${point.y}% - 12px)`,
-                          width: 24,
-                          height: 24,
-                          backgroundColor: "white",
-                          border: !editMode && dragPointIndex === index
-                            ? "3px solid #3F57FF"
-                            : "2px solid black",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: "black",
-                          zIndex: 10,
-                          cursor: editMode
-                            ? "default"
-                            : isDragging && dragPointIndex === index
-                            ? "grabbing"
-                            : "grab",
-                          userSelect: "none",
-                          transition: "all 0.2s ease",
-                          "&:hover": !editMode ? {
-                            backgroundColor: "#f0f0f0",
-                            transform: dragPointIndex === index ? "none" : "scale(1.1)",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                          } : {},
-                        }}
-                        title={!editMode ? "Drag to move, click to edit" : ""}
-                      >
-                        {point.position}
-                        {!editMode && (
-                          <Box
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePoint(index);
-                            }}
-                            sx={{
-                              position: "absolute",
-                              top: -8,
-                              right: -8,
-                              width: 16,
-                              height: 16,
-                              backgroundColor: "#ff4444",
-                              borderRadius: "50%",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              cursor: "pointer",
-                              fontSize: 10,
-                              color: "white",
-                              fontWeight: "bold",
-                              zIndex: 11,
-                              "&:hover": {
-                                backgroundColor: "#ff0000",
-                              },
-                            }}
-                            title="Delete point"
-                          >
-                            ×
-                          </Box>
-                        )}
-                      </Box>
-                    ))}
+                    {tempMarkupPoints.map((point, index) => {
+                      const isEditable = !editMode || point.isEditable;
+                      const isCurrentlyDragging = !editMode && dragPointIndex === index;
+                      
+                      return (
+                        <Box
+                          key={index}
+                          onMouseDown={isEditable ? (e) => handlePointMouseDown(e, index) : undefined}
+                          onClick={isEditable ? (e) => handlePointClick(e, index) : undefined}
+                          sx={{
+                            position: "absolute",
+                            left: `calc(${point.x}% - 12px)`,
+                            top: `calc(${point.y}% - 12px)`,
+                            width: 24,
+                            height: 24,
+                            backgroundColor: "white",
+                            border: isEditable && isCurrentlyDragging
+                              ? "3px solid #3F57FF"
+                              : isEditable
+                              ? "2px solid #3F57FF" // Blue for editable points
+                              : "2px solid #000000", // Black for read-only points
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: "black",
+                            zIndex: 10,
+                            cursor: !isEditable
+                              ? "default"
+                              : isDragging && dragPointIndex === index
+                              ? "grabbing"
+                              : "grab",
+                            userSelect: "none",
+                            transition: "all 0.2s ease",
+                            opacity: isEditable ? 1 : 0.7, // Slightly transparent for read-only
+                            "&:hover": isEditable ? {
+                              backgroundColor: "#f0f0f0",
+                              transform: dragPointIndex === index ? "none" : "scale(1.1)",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                            } : {},
+                          }}
+                          title={
+                            !isEditable
+                              ? "Read-only point"
+                              : !editMode
+                              ? "Drag to move, click to edit"
+                              : "Drag to move, click to edit (editable point)"
+                          }
+                        >
+                          {point.position}
+                          {!editMode && (
+                            <Box
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePoint(index);
+                              }}
+                              sx={{
+                                position: "absolute",
+                                top: -8,
+                                right: -8,
+                                width: 16,
+                                height: 16,
+                                backgroundColor: "#ff4444",
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                fontSize: 10,
+                                color: "white",
+                                fontWeight: "bold",
+                                zIndex: 11,
+                                "&:hover": {
+                                  backgroundColor: "#ff0000",
+                                },
+                              }}
+                              title="Delete point"
+                            >
+                              ×
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Card>
 
@@ -979,19 +1017,23 @@ const AddPartModal = ({
                       fontWeight="medium"
                       sx={{ mb: 1 }}
                     >
-                      Current Values:
+                      Editing Point:
                     </Typography>
-                    <Typography variant="body2">
-                      Position: <strong>{tempMarkupPoints[0].position}</strong>
-                    </Typography>
-                    <Typography variant="body2">
-                      Category: <strong>{tempMarkupPoints[0].category}</strong>
-                    </Typography>
+                    {tempMarkupPoints.filter(point => point.isEditable).map((editablePoint, index) => (
+                      <Box key={index}>
+                        <Typography variant="body2">
+                          Position: <strong>{editablePoint.position}</strong>
+                        </Typography>
+                        <Typography variant="body2">
+                          Category: <strong>{editablePoint.category}</strong>
+                        </Typography>
+                      </Box>
+                    ))}
                     <Typography
                       variant="body2"
                       sx={{ fontSize: 11, color: "text.secondary", mt: 1 }}
                     >
-                      Click the point to edit these values
+                      Blue point is editable (drag to move, click to edit). Black points are read-only.
                     </Typography>
                   </Box>
                 )}
