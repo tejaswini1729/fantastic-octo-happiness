@@ -776,7 +776,10 @@ const AddPartModal = ({
               : ADD_MDL?.TTL3}
           </Typography>
           <IconButton
-            onClick={handleChange}
+            onClick={(e) => {
+              e.target.name = ADD_MDL?.BTN_LBL1;
+              handleClose(e);
+            }}
             sx={{
               position: "absolute",
               top: 0,
@@ -1372,16 +1375,16 @@ const AddPartModal = ({
                 sx={{ wordBreak: "break-word", maxWidth: "85%" }}
               >
                 <Typography>
-                  Part: <strong>{form.part}</strong>
+                  Part: <strong>{partOptions.find(p => p.key === form.part)?.label || form.part}</strong>
                 </Typography>
                 <Typography>
-                  Model: <strong>{form.model}</strong>
+                  Model: <strong>{modelOptions.find(m => m.key === form.model)?.label || form.model}</strong>
                 </Typography>
                 <Typography>
-                  Variant: <strong>{form.variant}</strong>
+                  Variant: <strong>{variantOptions.find(v => v.key === form.variant)?.label || form.variant}</strong>
                 </Typography>
                 <Typography>
-                  Side: <strong>{form.side}</strong>
+                  Side: <strong>{sideOptions.find(s => s.key === form.side)?.label || form.side}</strong>
                 </Typography>
                 <Typography>
                   Position Added :
@@ -1402,7 +1405,7 @@ const AddPartModal = ({
                     {tempMarkupPoints.length > 0
                       ? tempMarkupPoints.map((point, index) => (
                           <span key={index}>
-                            {point.category}
+                            {categoryOptions.find(c => c.key === point.category)?.label || point.category}
                             {index < tempMarkupPoints.length - 1 ? ", " : ""}
                           </span>
                         ))
