@@ -217,7 +217,7 @@ const AddPartModal = ({
     const modalY = event.clientY - 100; // 100px offset upwards
     
     // Ensure modal doesn't go off-screen
-    const adjustedX = Math.min(modalX, window.innerWidth - 400); // assuming modal width ~400px
+    const adjustedX = Math.min(modalX, window.innerWidth - 300); // assuming modal width ~280px
     const adjustedY = Math.max(modalY, 50); // minimum 50px from top
     
     setModalPosition({ x: adjustedX, y: adjustedY });
@@ -382,7 +382,7 @@ const AddPartModal = ({
     const modalY = event.clientY - 100; // 100px offset upwards
     
     // Ensure modal doesn't go off-screen
-    const adjustedX = Math.min(modalX, window.innerWidth - 400); // assuming modal width ~400px
+    const adjustedX = Math.min(modalX, window.innerWidth - 300); // assuming modal width ~280px
     const adjustedY = Math.max(modalY, 50); // minimum 50px from top
     
     setModalPosition({ x: adjustedX, y: adjustedY });
@@ -1133,16 +1133,16 @@ const AddPartModal = ({
       <Dialog
         open={pointModal}
         onClose={() => setPointModal(false)}
-        maxWidth="sm"
-        fullWidth
+        maxWidth={false}
         PaperProps={{
           style: {
             position: 'fixed',
             left: modalPosition.x,
             top: modalPosition.y,
             margin: 0,
-            maxWidth: '400px',
-            width: '400px'
+            maxWidth: '280px',
+            width: '280px',
+            minWidth: '280px'
           }
         }}
         BackdropProps={{
