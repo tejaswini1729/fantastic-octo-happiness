@@ -194,13 +194,13 @@ const AddPartModal = ({
 
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl) {
+    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData) {
       const existingPoints = getExistingPointsForImage();
       // Keep only the new points (non-read-only) and merge with existing points
       const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
       setTempMarkupPoints([...existingPoints, ...newPoints]);
     }
-  }, [form.part, form.model, form.variant, form.side, existingPartsData]);
+  }, [form.part, form.model, form.variant, form.side, form.imageUrl]);
 
   // Initialize edit mode data
   useEffect(() => {
