@@ -176,12 +176,34 @@ const AddPartModal = ({
     event.preventDefault();
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
-
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
+    
+    // Same calculation as in handleImageClick
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+    const scaleX = containerWidth / naturalWidth;
+    const scaleY = containerHeight / naturalHeight;
+    const scale = Math.min(scaleX, scaleY);
+    const displayedWidth = naturalWidth * scale;
+    const displayedHeight = naturalHeight * scale;
+    const offsetX = (containerWidth - displayedWidth) / 2;
+    const offsetY = (containerHeight - displayedHeight) / 2;
+    
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+    
+    // Check if within image bounds
+    if (clickX < offsetX || clickX > offsetX + displayedWidth ||
+        clickY < offsetY || clickY > offsetY + displayedHeight) {
+      return;
+    }
+    
+    const relativeX = clickX - offsetX;
+    const relativeY = clickY - offsetY;
+    
+    const xPercent = (relativeX / displayedWidth) * 100;
+    const yPercent = (relativeY / displayedHeight) * 100;
 
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
@@ -372,17 +394,57 @@ const AddPartModal = ({
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
     
-    // Simple percentage calculation relative to the image container
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
-
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
+    // Get natural image dimensions
+    const naturalWidth = img.naturalWidth;
+    const naturalHeight = img.naturalHeight;
+    
+    // Get container dimensions
+    const containerWidth = rect.width;
+    const containerHeight = rect.height;
+    
+    // Calculate the scale to fit the image in the container (object-fit: contain)
+    const scaleX = containerWidth / naturalWidth;
+    const scaleY = containerHeight / naturalHeight;
+    const scale = Math.min(scaleX, scaleY);
+    
+    // Calculate actual displayed image dimensions
+    const displayedWidth = naturalWidth * scale;
+    const displayedHeight = naturalHeight * scale;
+    
+    // Calculate the offset (letterbox space)
+    const offsetX = (containerWidth - displayedWidth) / 2;
+    const offsetY = (containerHeight - displayedHeight) / 2;
+    
+    // Get click position relative to container
+    const clickX = event.clientX - rect.left;
+    const clickY = event.clientY - rect.top;
+    
+    // Check if click is within the actual image area
+    if (clickX < offsetX || clickX > offsetX + displayedWidth ||
+        clickY < offsetY || clickY > offsetY + displayedHeight) {
+      // Click is in letterbox area, ignore it
+      return;
+    }
+    
+    // Calculate position relative to the actual image
+    const relativeX = clickX - offsetX;
+    const relativeY = clickY - offsetY;
+    
+    // Convert to percentage of the displayed image
+    const xPercent = (relativeX / displayedWidth) * 100;
+    const yPercent = (relativeY / displayedHeight) * 100;
 
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
 
-    console.log("Click position:", { x, y, xPercent, yPercent, clampedX, clampedY });
+    console.log("Click analysis:", {
+      naturalWidth, naturalHeight,
+      containerWidth, containerHeight,
+      scale, displayedWidth, displayedHeight,
+      offsetX, offsetY,
+      clickX, clickY, relativeX, relativeY,
+      xPercent, yPercent, clampedX, clampedY
+    });
 
     // Set modal position near the click point
     setModalPosition({
@@ -896,88 +958,113 @@ const AddPartModal = ({
                       }}
                       draggable={false}
                     />
-                    {tempMarkupPoints.map((point, index) => (
-                      <Box key={index} sx={{ position: "relative" }}>
-                        {/* Main Point */}
-                        <Box
-                          onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
-                          onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
-                          sx={{
-                            position: "absolute",
-                            left: `${point.x}%`,
-                            top: `${point.y}%`,
-                            transform: "translate(-50%, -50%)",
-                            width: 24,
-                            height: 24,
-                            backgroundColor: "white",
-                            border: !editMode && dragPointIndex === index
-                              ? "3px solid #3F57FF"
-                              : selectedPointIndex === index
-                              ? "2px solid #FF6B6B"
-                              : "2px solid black",
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            fontSize: 12,
-                            fontWeight: 500,
-                            color: "black",
-                            zIndex: 10,
-                            cursor: editMode
-                              ? "default"
-                              : isDragging && dragPointIndex === index
-                              ? "grabbing"
-                              : "grab",
-                            userSelect: "none",
-                            transition: "all 0.2s ease",
-                            "&:hover": !editMode ? {
-                              backgroundColor: "#f0f0f0",
-                              transform: dragPointIndex === index ? "translate(-50%, -50%)" : "translate(-50%, -50%) scale(1.1)",
-                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                            } : {},
-                          }}
-                          title={!editMode ? "Drag to move, click to select, click again to edit" : ""}
-                        >
-                          {point.position}
-                        </Box>
-                        
-                        {/* X Delete Icon - only show when point is selected */}
-                        {!editMode && selectedPointIndex === index && (
+                    {tempMarkupPoints.map((point, index) => {
+                      // Calculate the same positioning logic for rendering
+                      const img = imageRef.current;
+                      if (!img) return null;
+                      
+                      const rect = img.getBoundingClientRect();
+                      const naturalWidth = img.naturalWidth;
+                      const naturalHeight = img.naturalHeight;
+                      const containerWidth = rect.width;
+                      const containerHeight = rect.height;
+                      const scaleX = containerWidth / naturalWidth;
+                      const scaleY = containerHeight / naturalHeight;
+                      const scale = Math.min(scaleX, scaleY);
+                      const displayedWidth = naturalWidth * scale;
+                      const displayedHeight = naturalHeight * scale;
+                      const offsetX = (containerWidth - displayedWidth) / 2;
+                      const offsetY = (containerHeight - displayedHeight) / 2;
+                      
+                      // Calculate actual position
+                      const actualX = offsetX + (point.x / 100) * displayedWidth;
+                      const actualY = offsetY + (point.y / 100) * displayedHeight;
+                      const actualXPercent = (actualX / containerWidth) * 100;
+                      const actualYPercent = (actualY / containerHeight) * 100;
+                      
+                      return (
+                        <Box key={index} sx={{ position: "relative" }}>
+                          {/* Main Point */}
                           <Box
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeletePoint(index);
-                            }}
+                            onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
+                            onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
                             sx={{
                               position: "absolute",
-                              left: `${point.x}%`,
-                              top: `${point.y}%`,
-                              transform: "translate(-50%, -150%)",
-                              width: 16,
-                              height: 16,
-                              backgroundColor: "#FF6B6B",
-                              border: "1px solid white",
+                              left: `${actualXPercent}%`,
+                              top: `${actualYPercent}%`,
+                              transform: "translate(-50%, -50%)",
+                              width: 24,
+                              height: 24,
+                              backgroundColor: "white",
+                              border: !editMode && dragPointIndex === index
+                                ? "3px solid #3F57FF"
+                                : selectedPointIndex === index
+                                ? "2px solid #FF6B6B"
+                                : "2px solid black",
                               borderRadius: "50%",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: 10,
-                              fontWeight: "bold",
-                              color: "white",
-                              cursor: "pointer",
-                              zIndex: 15,
-                              "&:hover": {
-                                backgroundColor: "#FF5252",
-                                transform: "translate(-50%, -150%) scale(1.1)",
-                              },
+                              fontSize: 12,
+                              fontWeight: 500,
+                              color: "black",
+                              zIndex: 10,
+                              cursor: editMode
+                                ? "default"
+                                : isDragging && dragPointIndex === index
+                                ? "grabbing"
+                                : "grab",
+                              userSelect: "none",
+                              transition: "all 0.2s ease",
+                              "&:hover": !editMode ? {
+                                backgroundColor: "#f0f0f0",
+                                transform: dragPointIndex === index ? "translate(-50%, -50%)" : "translate(-50%, -50%) scale(1.1)",
+                                boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                              } : {},
                             }}
-                            title="Delete point"
+                            title={!editMode ? "Drag to move, click to select, click again to edit" : ""}
                           >
-                            ×
+                            {point.position}
                           </Box>
-                        )}
-                      </Box>
-                    ))}
+                          
+                          {/* X Delete Icon - only show when point is selected */}
+                          {!editMode && selectedPointIndex === index && (
+                            <Box
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeletePoint(index);
+                              }}
+                              sx={{
+                                position: "absolute",
+                                left: `${actualXPercent}%`,
+                                top: `${actualYPercent}%`,
+                                transform: "translate(50%, -150%)",
+                                width: 16,
+                                height: 16,
+                                backgroundColor: "#FF6B6B",
+                                border: "1px solid white",
+                                borderRadius: "50%",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: 10,
+                                fontWeight: "bold",
+                                color: "white",
+                                cursor: "pointer",
+                                zIndex: 15,
+                                "&:hover": {
+                                  backgroundColor: "#FF5252",
+                                  transform: "translate(50%, -150%) scale(1.1)",
+                                },
+                              }}
+                              title="Delete point"
+                            >
+                              ×
+                            </Box>
+                          )}
+                        </Box>
+                      );
+                    })}
                   </Box>
                 </Card>
 
