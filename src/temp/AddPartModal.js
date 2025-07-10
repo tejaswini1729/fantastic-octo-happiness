@@ -334,17 +334,17 @@ const AddPartModal = ({
         console.log("No existing image data found");
       }
     }
-  }, [form.part, form.model, form.variant, form.side]);
+  }, [form.part, form.model, form.variant, form.side, isManuallyUploaded]);
 
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData) {
+    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && !isManuallyUploaded) {
       const existingPoints = getExistingPointsForImage();
       // Keep only the new points (non-read-only) and merge with existing points
       const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
       setTempMarkupPoints([...existingPoints, ...newPoints]);
     }
-  }, [form.imageUrl]); // Only trigger when imageUrl changes
+  }, [form.imageUrl, isManuallyUploaded]); // Only trigger when imageUrl changes and not manually uploaded
 
   // Initialize edit mode data
   useEffect(() => {
@@ -496,39 +496,9 @@ const AddPartModal = ({
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     
-    // Check for auto-load when all required fields are filled
-    if (!editMode && !form.imageUrl) {
-      const updatedForm = { ...form, [key]: value };
-      if (updatedForm.part && updatedForm.model && updatedForm.variant && updatedForm.side) {
-        console.log("All fields filled, checking for existing image...", updatedForm);
-        
-        // Use setTimeout to ensure state is updated
-        setTimeout(() => {
-          const existingImageData = getExistingImageData();
-          console.log("Manual check - Found existing image data:", existingImageData);
-          
-          if (existingImageData && !form.imageUrl) {
-            console.log("Auto-loading image manually...", existingImageData);
-            setForm(prev => ({
-              ...prev,
-              image: { 
-                name: existingImageData.imageName,
-                size: existingImageData.imageSize,
-                isAutoLoaded: true
-              },
-              imageUrl: existingImageData.imageUrl
-            }));
-            setProgress(100);
-            
-            // Load existing points
-            setTimeout(() => {
-              const existingPoints = getExistingPointsForImage();
-              console.log("Loading existing points manually:", existingPoints);
-              setTempMarkupPoints(existingPoints);
-            }, 100);
-          }
-        }, 50);
-      }
+    // Reset manual upload flag when form configuration changes (but not when setting image/imageUrl)
+    if (!editMode && (key === 'part' || key === 'model' || key === 'variant' || key === 'side')) {
+      setIsManuallyUploaded(false);
     }
   };
 
