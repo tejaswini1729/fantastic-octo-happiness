@@ -959,29 +959,7 @@ const AddPartModal = ({
                       draggable={false}
                     />
                     {tempMarkupPoints.map((point, index) => {
-                      // Calculate the same positioning logic for rendering
-                      const img = imageRef.current;
-                      if (!img) return null;
-                      
-                      const rect = img.getBoundingClientRect();
-                      const naturalWidth = img.naturalWidth;
-                      const naturalHeight = img.naturalHeight;
-                      const containerWidth = rect.width;
-                      const containerHeight = rect.height;
-                      const scaleX = containerWidth / naturalWidth;
-                      const scaleY = containerHeight / naturalHeight;
-                      const scale = Math.min(scaleX, scaleY);
-                      const displayedWidth = naturalWidth * scale;
-                      const displayedHeight = naturalHeight * scale;
-                      const offsetX = (containerWidth - displayedWidth) / 2;
-                      const offsetY = (containerHeight - displayedHeight) / 2;
-                      
-                      // Calculate actual position
-                      const actualX = offsetX + (point.x / 100) * displayedWidth;
-                      const actualY = offsetY + (point.y / 100) * displayedHeight;
-                      const actualXPercent = (actualX / containerWidth) * 100;
-                      const actualYPercent = (actualY / containerHeight) * 100;
-                      
+                      // Simple rendering using the same coordinate system as storage
                       return (
                         <Box key={index} sx={{ position: "relative" }}>
                           {/* Main Point */}
@@ -990,8 +968,8 @@ const AddPartModal = ({
                             onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
                             sx={{
                               position: "absolute",
-                              left: `${actualXPercent}%`,
-                              top: `${actualYPercent}%`,
+                              left: `${point.x}%`,
+                              top: `${point.y}%`,
                               transform: "translate(-50%, -50%)",
                               width: 24,
                               height: 24,
@@ -1036,8 +1014,8 @@ const AddPartModal = ({
                               }}
                               sx={{
                                 position: "absolute",
-                                left: `${actualXPercent}%`,
-                                top: `${actualYPercent}%`,
+                                left: `${point.x}%`,
+                                top: `${point.y}%`,
                                 transform: "translate(50%, -150%)",
                                 width: 16,
                                 height: 16,
