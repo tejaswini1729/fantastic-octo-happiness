@@ -381,6 +381,8 @@ const AddPartModal = ({
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
 
+    console.log("Click position:", { x, y, xPercent, yPercent, clampedX, clampedY });
+
     // Set modal position near the click point
     setModalPosition({
       x: event.clientX,
@@ -944,8 +946,8 @@ const AddPartModal = ({
                             }}
                             sx={{
                               position: "absolute",
-                              left: `calc(${point.x}% - 8px)`,
-                              top: `calc(${point.y}% - 20px)`,
+                              left: `calc(${point.x}% + 8px)`,
+                              top: `calc(${point.y}% - 24px)`,
                               width: 16,
                               height: 16,
                               backgroundColor: "#FF6B6B",
