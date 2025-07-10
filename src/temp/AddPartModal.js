@@ -462,6 +462,7 @@ const AddPartModal = ({
     event.stopPropagation();
     
     // Set the point data including the current position and category
+    // In edit mode, make sure we're preserving the original point data
     setPointData({
       position: point.position.toString(),
       category: point.category,
@@ -479,6 +480,15 @@ const AddPartModal = ({
     setModalPosition({ x: adjustedX, y: adjustedY });
     setEditingPointIndex(pointIndex);
     setPointModal(true);
+    
+    // Debug log for edit mode
+    if (editMode) {
+      console.log("Edit mode - Point clicked:", {
+        position: point.position,
+        category: point.category,
+        pointData: { position: point.position.toString(), category: point.category }
+      });
+    }
   };
 
   // Handle point deletion in Add Part mode
@@ -505,39 +515,9 @@ const AddPartModal = ({
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     
-    // Check for auto-load when all required fields are filled
-    if (!editMode && !form.imageUrl) {
-      const updatedForm = { ...form, [key]: value };
-      if (updatedForm.part && updatedForm.model && updatedForm.variant && updatedForm.side) {
-        console.log("All fields filled, checking for existing image...", updatedForm);
-        
-        // Use setTimeout to ensure state is updated
-        setTimeout(() => {
-          const existingImageData = getExistingImageData();
-          console.log("Manual check - Found existing image data:", existingImageData);
-          
-          if (existingImageData && !form.imageUrl) {
-            console.log("Auto-loading image manually...", existingImageData);
-            setForm(prev => ({
-              ...prev,
-              image: { 
-                name: existingImageData.imageName,
-                size: existingImageData.imageSize,
-                isAutoLoaded: true
-              },
-              imageUrl: existingImageData.imageUrl
-            }));
-            setProgress(100);
-            
-            // Load existing points
-            setTimeout(() => {
-              const existingPoints = getExistingPointsForImage();
-              console.log("Loading existing points manually:", existingPoints);
-              setTempMarkupPoints(existingPoints);
-            }, 100);
-          }
-        }, 50);
-      }
+    // Reset manual upload flag when form configuration changes (but not when setting image/imageUrl)
+    if (!editMode && (key === 'part' || key === 'model' || key === 'variant' || key === 'side')) {
+      setIsManuallyUploaded(false);
     }
   };
 
@@ -817,6 +797,23 @@ const AddPartModal = ({
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
+
+  // Ensure pointData is maintained in edit mode
+  useEffect(() => {
+    if (editMode && pointModal && editingPointIndex !== null) {
+      const point = tempMarkupPoints[editingPointIndex];
+      if (point && point.isEditable) {
+        console.log("Maintaining point data in edit mode:", {
+          position: point.position,
+          category: point.category
+        });
+        setPointData({
+          position: point.position.toString(),
+          category: point.category,
+        });
+      }
+    }
+  }, [editMode, pointModal, editingPointIndex, tempMarkupPoints]);
 
   return (
     <>
