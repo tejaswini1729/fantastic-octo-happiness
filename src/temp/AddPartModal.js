@@ -123,6 +123,32 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+  // Get existing points for the current image configuration (for Add mode)
+  const getExistingPointsForImage = () => {
+    if (editMode || !form.part || !form.model || !form.variant || !form.side) {
+      return [];
+    }
+
+    // Find parts with same configuration (part, model, variant, side)
+    const matchingParts = existingPartsData.filter(part => 
+      part.part === form.part &&
+      part.model === form.model &&
+      part.variant === form.variant &&
+      part.side === form.side
+    );
+
+    // Extract all existing points from matching parts and mark them as read-only
+    const existingPoints = matchingParts.flatMap(part => 
+      part.markupPoints ? part.markupPoints.map(point => ({
+        ...point,
+        isReadOnly: true, // Mark as read-only
+        isEditable: false
+      })) : []
+    );
+
+    return existingPoints;
+  };
+
   // Get used positions for the current image configuration
   const getUsedPositions = () => {
     if (editMode || !form.part || !form.model || !form.variant || !form.side) {
@@ -142,8 +168,10 @@ const AddPartModal = ({
       part.markupPoints ? part.markupPoints.map(point => point.position.toString()) : []
     );
 
-    // Also include positions from current temp markup points
-    const currentPositions = tempMarkupPoints.map(point => point.position.toString());
+    // Also include positions from current temp markup points (but only the new ones, not read-only)
+    const currentPositions = tempMarkupPoints
+      .filter(point => !point.isReadOnly)
+      .map(point => point.position.toString());
 
     return [...new Set([...usedPositions, ...currentPositions])];
   };
@@ -159,11 +187,20 @@ const AddPartModal = ({
   const resetData = () => {
     setForm(initialFormData);
     setTempMarkupPoints(initial_tm_Data);
-    // setSide(initialSideData);
     setStep(1);
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
   };
+
+  // Update temp markup points when form changes (to include existing points for the image)
+  useEffect(() => {
+    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl) {
+      const existingPoints = getExistingPointsForImage();
+      // Keep only the new points (non-read-only) and merge with existing points
+      const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
+      setTempMarkupPoints([...existingPoints, ...newPoints]);
+    }
+  }, [form.part, form.model, form.variant, form.side, existingPartsData]);
 
   // Initialize edit mode data
   useEffect(() => {
@@ -206,9 +243,12 @@ const AddPartModal = ({
   const handlePointMouseDown = (event, pointIndex) => {
     const point = tempMarkupPoints[pointIndex];
     
+    // Don't allow dragging read-only points
+    if (point.isReadOnly) return;
+    
     // In edit mode, only allow dragging the editable point
     if (editMode && !point.isEditable) return;
-    // In add mode, allow dragging any point
+    // In add mode, allow dragging any non-read-only point
     if (!editMode || (editMode && point.isEditable)) {
       event.preventDefault();
       event.stopPropagation();
@@ -221,6 +261,8 @@ const AddPartModal = ({
     if (!isDragging || dragPointIndex === null || !imageRef.current) return;
     
     const point = tempMarkupPoints[dragPointIndex];
+    // Don't allow moving read-only points
+    if (point?.isReadOnly) return;
     // In edit mode, only allow moving the editable point
     if (editMode && !point?.isEditable) return;
 
@@ -256,9 +298,12 @@ const AddPartModal = ({
   const handlePointClick = (event, pointIndex) => {
     const point = tempMarkupPoints[pointIndex];
     
+    // Don't allow clicking read-only points
+    if (point.isReadOnly) return;
+    
     // In edit mode, only allow clicking the editable point
     if (editMode && !point.isEditable) return;
-    // In add mode, allow clicking any point if not dragging
+    // In add mode, allow clicking any non-read-only point if not dragging
     if (!editMode && isDragging) return;
 
     event.stopPropagation();
@@ -286,6 +331,9 @@ const AddPartModal = ({
   // Handle point deletion in Add Part mode
   const handleDeletePoint = (pointIndex) => {
     if (editMode) return; // Only allow deletion in Add Part mode
+    
+    const point = tempMarkupPoints[pointIndex];
+    if (point.isReadOnly) return; // Don't allow deletion of read-only points
     
     setTempMarkupPoints((prev) => prev.filter((_, index) => index !== pointIndex));
     setPointModal(false);
@@ -319,13 +367,15 @@ const AddPartModal = ({
       variant: form.variant,
       side: form.side,
       imageUrl: form.imageUrl,
-      markupPoints: tempMarkupPoints.map((point) => ({
-        x: point.x,
-        y: point.y,
-        position: point.position,
-        category: point.category,
-        // Don't include isEditable in the final data
-      })),
+      markupPoints: tempMarkupPoints
+        .filter(point => !point.isReadOnly) // Only include new points, not existing read-only ones
+        .map((point) => ({
+          x: point.x,
+          y: point.y,
+          position: point.position,
+          category: point.category,
+          // Don't include isEditable, isReadOnly in the final data
+        })),
     };
     return data;
   }
@@ -952,13 +1002,14 @@ const AddPartModal = ({
                     />
                     {tempMarkupPoints.map((point, index) => {
                       const isEditable = !editMode || point.isEditable;
+                      const isReadOnly = point.isReadOnly;
                       const isCurrentlyDragging = !editMode && dragPointIndex === index;
                       
                       return (
                         <Box
                           key={index}
-                          onMouseDown={isEditable ? (e) => handlePointMouseDown(e, index) : undefined}
-                          onClick={isEditable ? (e) => handlePointClick(e, index) : undefined}
+                          onMouseDown={isEditable && !isReadOnly ? (e) => handlePointMouseDown(e, index) : undefined}
+                          onClick={isEditable && !isReadOnly ? (e) => handlePointClick(e, index) : undefined}
                           sx={{
                             position: "absolute",
                             left: `calc(${point.x}% - 12px)`,
@@ -966,11 +1017,13 @@ const AddPartModal = ({
                             width: 24,
                             height: 24,
                             backgroundColor: "white",
-                            border: isEditable && isCurrentlyDragging
+                            border: isReadOnly
+                              ? "2px solid #666666" // Gray for read-only existing points
+                              : isEditable && isCurrentlyDragging
                               ? "3px solid #3F57FF"
                               : isEditable
                               ? "2px solid #3F57FF" // Blue for editable points
-                              : "2px solid #000000", // Black for read-only points
+                              : "2px solid #000000", // Black for other read-only points
                             borderRadius: "50%",
                             display: "flex",
                             alignItems: "center",
@@ -979,22 +1032,24 @@ const AddPartModal = ({
                             fontWeight: 500,
                             color: "black",
                             zIndex: 10,
-                            cursor: !isEditable
+                            cursor: isReadOnly || !isEditable
                               ? "default"
                               : isDragging && dragPointIndex === index
                               ? "grabbing"
                               : "grab",
                             userSelect: "none",
                             transition: "all 0.2s ease",
-                            opacity: isEditable ? 1 : 0.7, // Slightly transparent for read-only
-                            "&:hover": isEditable ? {
+                            opacity: isReadOnly ? 0.6 : (isEditable ? 1 : 0.7), // More transparent for read-only
+                            "&:hover": isEditable && !isReadOnly ? {
                               backgroundColor: "#f0f0f0",
                               transform: dragPointIndex === index ? "none" : "scale(1.1)",
                               boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                             } : {},
                           }}
                           title={
-                            !isEditable
+                            isReadOnly
+                              ? "Existing point (read-only)"
+                              : !isEditable
                               ? "Read-only point"
                               : !editMode
                               ? "Drag to move, click to edit"
@@ -1002,7 +1057,7 @@ const AddPartModal = ({
                           }
                         >
                           {point.position}
-                          {!editMode && (
+                          {!editMode && !isReadOnly && (
                             <Box
                               onClick={(e) => {
                                 e.stopPropagation();
