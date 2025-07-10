@@ -638,6 +638,9 @@ const AddPartModal = ({
 
   const handleImageClick = (event) => {
     if (!form.imageUrl || !imageRef.current) return;
+    
+    // Don't allow adding new points in edit mode
+    if (editMode) return;
 
     event.preventDefault();
     event.stopPropagation();
