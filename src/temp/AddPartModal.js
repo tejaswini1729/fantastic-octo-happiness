@@ -105,7 +105,7 @@ const AddPartModal = ({
     image: null,
     imageUrl: null,
   };
-
+  console.log("existing dats",existingPartsData)
   const initial_tm_Data = [];
 
   const [form, setForm] = useState(initialFormData);
@@ -123,7 +123,6 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
-  const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
 
   // Get existing image data for the current configuration
   const getExistingImageData = () => {
@@ -286,7 +285,6 @@ const AddPartModal = ({
     setStep(1);
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
-    setIsManuallyUploaded(false);
   };
 
   // Debug: Log when modal opens and existingPartsData changes
@@ -302,7 +300,7 @@ const AddPartModal = ({
 
   // Auto-load image when configuration matches existing part
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded) {
+    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl) {
       console.log("Checking for existing image data...", {
         part: form.part,
         model: form.model,
@@ -336,7 +334,7 @@ const AddPartModal = ({
         console.log("No existing image data found");
       }
     }
-  }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData]);
+  }, [form.part, form.model, form.variant, form.side]);
 
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
@@ -545,26 +543,35 @@ const AddPartModal = ({
     
     handleChange("image", null);
     handleChange("imageUrl", null);
-    setIsManuallyUploaded(false); // Reset manual upload flag when deleting
     setProgress(0);
     setTempMarkupPoints([]); // Clear all points when image is deleted
   };
 
   function mapDataRecord() {
+    // Helper to get label from key or label
+    const getLabel = (options, value) => {
+      const found = options.find(opt => opt.key === value || opt.label === value);
+      return found ? found.label : value;
+    };
+
+    const getCategoryLabel = (value) => {
+      const found = categoryOptions.find(opt => opt.key === value || opt.label === value);
+      return found ? found.label : value;
+    };
+
     const data = {
-      part: form.part,
-      model: form.model,
-      variant: form.variant,
-      side: form.side,
+      part: getLabel(partOptions, form.part),
+      model: getLabel(modelOptions, form.model),
+      variant: getLabel(variantOptions, form.variant),
+      side: getLabel(sideOptions, form.side),
       imageUrl: form.imageUrl,
       markupPoints: tempMarkupPoints
-        .filter(point => !point.isReadOnly) // Only include new points, not existing read-only ones
+        .filter(point => !point.isReadOnly)
         .map((point) => ({
           x: point.x,
           y: point.y,
           position: point.position,
-          category: point.category,
-          // Don't include isEditable, isReadOnly in the final data
+          category: getCategoryLabel(point.category),
         })),
     };
     return data;
@@ -635,16 +642,13 @@ const AddPartModal = ({
       }
 
       handleChange("image", file);
-      setIsManuallyUploaded(true); // Mark as manually uploaded
       const reader = new FileReader();
       reader.onload = (e) => {
         handleChange("imageUrl", e.target.result);
-        setTempMarkupPoints([]); // Clear points when new image is uploaded
+        setTempMarkupPoints([]);
       };
       reader.onerror = () => {
         console.error("File reading error");
-        setSnackbarMessage("Error reading file. Please try again.");
-        setSnackbarSeverity("error");
         setSnackbarOpen(true);
       };
       reader.readAsDataURL(file);
@@ -938,7 +942,7 @@ const AddPartModal = ({
                       letterSpacing: "0%",
                     }}
                   >
-                    {form.image.name}
+                    {form.image.isAutoLoaded?"":form.image.name}
                   </Typography>
                   <Typography
                     sx={{
