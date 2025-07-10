@@ -894,10 +894,6 @@ const AddPartModal = ({
                         key={index}
                         onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
                         onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
-                        onContextMenu={!editMode ? (e) => {
-                          e.preventDefault();
-                          handleDeletePoint(index);
-                        } : undefined}
                         sx={{
                           position: "absolute",
                           left: `calc(${point.x}% - 12px)`,
@@ -929,9 +925,40 @@ const AddPartModal = ({
                             boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                           } : {},
                         }}
-                        title={!editMode ? "Drag to move, click to edit, right-click to delete" : ""}
+                        title={!editMode ? "Drag to move, click to edit" : ""}
                       >
                         {point.position}
+                        {!editMode && (
+                          <Box
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePoint(index);
+                            }}
+                            sx={{
+                              position: "absolute",
+                              top: -8,
+                              right: -8,
+                              width: 16,
+                              height: 16,
+                              backgroundColor: "#ff4444",
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              cursor: "pointer",
+                              fontSize: 10,
+                              color: "white",
+                              fontWeight: "bold",
+                              zIndex: 11,
+                              "&:hover": {
+                                backgroundColor: "#ff0000",
+                              },
+                            }}
+                            title="Delete point"
+                          >
+                            ×
+                          </Box>
+                        )}
                       </Box>
                     ))}
                   </Box>
@@ -1210,15 +1237,6 @@ const AddPartModal = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPointModal(false)}>Cancel</Button>
-          {!editMode && editingPointIndex !== null && (
-            <Button
-              onClick={() => handleDeletePoint(editingPointIndex)}
-              color="error"
-              startIcon={<DeleteIcon />}
-            >
-              Delete Point
-            </Button>
-          )}
           <Button
             onClick={handlePointSubmit}
             variant="contained"
