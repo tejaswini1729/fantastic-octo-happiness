@@ -122,6 +122,7 @@ const AddPartModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
   const [selectedPointIndex, setSelectedPointIndex] = useState(null);
+  const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
 
   const resetData = () => {
     setForm(initialFormData);
@@ -379,6 +380,12 @@ const AddPartModal = ({
 
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
+
+    // Set modal position near the click point
+    setModalPosition({
+      x: event.clientX,
+      y: event.clientY
+    });
 
     setCurrentPoint({ x: clampedX, y: clampedY });
     setPointModal(true);
@@ -1165,6 +1172,18 @@ const AddPartModal = ({
         onClose={() => setPointModal(false)}
         maxWidth="sm"
         fullWidth
+        sx={{
+          '& .MuiDialog-container': {
+            '& .MuiPaper-root': {
+              position: 'fixed',
+              left: `${modalPosition.x + 20}px`,
+              top: `${modalPosition.y - 100}px`,
+              margin: 0,
+              maxWidth: '400px',
+              width: 'auto',
+            },
+          },
+        }}
       >
         <DialogTitle>
           {editingPointIndex !== null
