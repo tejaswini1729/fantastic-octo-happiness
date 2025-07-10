@@ -95,6 +95,7 @@ const AddPartModal = ({
   onNext,
   editMode = false,
   editData = null,
+  existingPartsData = [], // Add this prop to receive all existing parts data
 }) => {
   const initialFormData = {
     part: "",
@@ -122,6 +123,38 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+  // Get used positions for the current image configuration
+  const getUsedPositions = () => {
+    if (editMode || !form.part || !form.model || !form.variant || !form.side) {
+      return [];
+    }
+
+    // Find parts with same configuration (part, model, variant, side)
+    const matchingParts = existingPartsData.filter(part => 
+      part.part === form.part &&
+      part.model === form.model &&
+      part.variant === form.variant &&
+      part.side === form.side
+    );
+
+    // Extract all used positions from matching parts
+    const usedPositions = matchingParts.flatMap(part => 
+      part.markupPoints ? part.markupPoints.map(point => point.position.toString()) : []
+    );
+
+    // Also include positions from current temp markup points
+    const currentPositions = tempMarkupPoints.map(point => point.position.toString());
+
+    return [...new Set([...usedPositions, ...currentPositions])];
+  };
+
+  // Filter available positions based on category and used positions
+  const getAvailablePositions = (category) => {
+    const allPositions = positionOptions[category] || [];
+    const usedPositions = getUsedPositions();
+    
+    return allPositions.filter(position => !usedPositions.includes(position.key));
+  };
 
   const resetData = () => {
     setForm(initialFormData);
@@ -1271,11 +1304,23 @@ const AddPartModal = ({
                 label="Position"
                 disabled={editMode || !pointData.category} // Disable in edit mode or when category not selected
               >
-                {(positionOptions[pointData.category] || []).map((option) => (
-                  <MenuItem key={option.key} value={option.key}>
-                    {option.label}
+                {(editMode 
+                  ? (positionOptions[pointData.category] || [])
+                  : getAvailablePositions(pointData.category)
+                ).length === 0 && pointData.category ? (
+                  <MenuItem disabled value="">
+                    No available positions for this configuration
                   </MenuItem>
-                ))}
+                ) : (
+                  (editMode 
+                    ? (positionOptions[pointData.category] || [])
+                    : getAvailablePositions(pointData.category)
+                  ).map((option) => (
+                    <MenuItem key={option.key} value={option.key}>
+                      {option.label}
+                    </MenuItem>
+                  ))
+                )}
               </Select>
             </FormControl>
           </Box>
