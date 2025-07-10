@@ -404,6 +404,8 @@ const AddPartModal = ({
         category: pointData.category,
       };
 
+      console.log("Adding point:", newPoint);
+
       if (editingPointIndex !== null) {
         // Update existing point
         setTempMarkupPoints((prev) =>
@@ -901,8 +903,9 @@ const AddPartModal = ({
                           onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
                           sx={{
                             position: "absolute",
-                            left: `calc(${point.x}% - 12px)`,
-                            top: `calc(${point.y}% - 12px)`,
+                            left: `${point.x}%`,
+                            top: `${point.y}%`,
+                            transform: "translate(-50%, -50%)",
                             width: 24,
                             height: 24,
                             backgroundColor: "white",
@@ -928,7 +931,7 @@ const AddPartModal = ({
                             transition: "all 0.2s ease",
                             "&:hover": !editMode ? {
                               backgroundColor: "#f0f0f0",
-                              transform: dragPointIndex === index ? "none" : "scale(1.1)",
+                              transform: dragPointIndex === index ? "translate(-50%, -50%)" : "translate(-50%, -50%) scale(1.1)",
                               boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                             } : {},
                           }}
@@ -946,8 +949,9 @@ const AddPartModal = ({
                             }}
                             sx={{
                               position: "absolute",
-                              left: `calc(${point.x}% + 8px)`,
-                              top: `calc(${point.y}% - 24px)`,
+                              left: `${point.x}%`,
+                              top: `${point.y}%`,
+                              transform: "translate(-50%, -150%)",
                               width: 16,
                               height: 16,
                               backgroundColor: "#FF6B6B",
@@ -963,7 +967,7 @@ const AddPartModal = ({
                               zIndex: 15,
                               "&:hover": {
                                 backgroundColor: "#FF5252",
-                                transform: "scale(1.1)",
+                                transform: "translate(-50%, -150%) scale(1.1)",
                               },
                             }}
                             title="Delete point"
