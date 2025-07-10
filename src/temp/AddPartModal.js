@@ -121,6 +121,7 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+  const [selectedPointIndex, setSelectedPointIndex] = useState(null);
 
   const resetData = () => {
     setForm(initialFormData);
@@ -204,21 +205,30 @@ const AddPartModal = ({
     if (editMode || isDragging) return; // Only allow in Add Part mode
 
     event.stopPropagation();
-    const point = tempMarkupPoints[pointIndex];
-    setPointData({
-      position: point.position.toString(),
-      category: point.category,
-    });
-    setCurrentPoint({ x: point.x, y: point.y });
-    setEditingPointIndex(pointIndex);
-    setPointModal(true);
+    
+    // If clicking on already selected point, open edit modal
+    if (selectedPointIndex === pointIndex) {
+      const point = tempMarkupPoints[pointIndex];
+      setPointData({
+        position: point.position.toString(),
+        category: point.category,
+      });
+      setCurrentPoint({ x: point.x, y: point.y });
+      setEditingPointIndex(pointIndex);
+      setPointModal(true);
+      setSelectedPointIndex(null);
+    } else {
+      // Select the point to show X icon
+      setSelectedPointIndex(pointIndex);
+    }
   };
 
-  // Handle point deletion in Add Part mode
+  // Handle X icon click to delete point
   const handleDeletePoint = (pointIndex) => {
     if (editMode) return; // Only allow deletion in Add Part mode
     
     setTempMarkupPoints((prev) => prev.filter((_, index) => index !== pointIndex));
+    setSelectedPointIndex(null);
     setPointModal(false);
     setEditingPointIndex(null);
   };
@@ -347,10 +357,13 @@ const AddPartModal = ({
   };
 
   const handleImageClick = (event) => {
-    if (!form.imageUrl || !imageRef.current) return;
+    if (!form.imageUrl || !imageRef.current || editMode) return;
 
     event.preventDefault();
     event.stopPropagation();
+
+    // Clear any selected point when clicking on empty area
+    setSelectedPointIndex(null);
 
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
@@ -820,7 +833,7 @@ const AddPartModal = ({
                               fontWeight: 400,
                             }}
                           >
-                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to edit, or right-click to delete.
+                            Tap the uploaded part image to place points. Once placed, you can drag points to move them, click to select them, or click again to edit.
                           </span>
                         </>
                       )}
@@ -869,48 +882,83 @@ const AddPartModal = ({
                       draggable={false}
                     />
                     {tempMarkupPoints.map((point, index) => (
-                      <Box
-                        key={index}
-                        onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
-                        onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
-                        onContextMenu={!editMode ? (e) => {
-                          e.preventDefault();
-                          handleDeletePoint(index);
-                        } : undefined}
-                        sx={{
-                          position: "absolute",
-                          left: `calc(${point.x}% - 12px)`,
-                          top: `calc(${point.y}% - 12px)`,
-                          width: 24,
-                          height: 24,
-                          backgroundColor: "white",
-                          border: !editMode && dragPointIndex === index
-                            ? "3px solid #3F57FF"
-                            : "2px solid black",
-                          borderRadius: "50%",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: "black",
-                          zIndex: 10,
-                          cursor: editMode
-                            ? "default"
-                            : isDragging && dragPointIndex === index
-                            ? "grabbing"
-                            : "grab",
-                          userSelect: "none",
-                          transition: "all 0.2s ease",
-                          "&:hover": !editMode ? {
-                            backgroundColor: "#f0f0f0",
-                            transform: dragPointIndex === index ? "none" : "scale(1.1)",
-                            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-                          } : {},
-                        }}
-                        title={!editMode ? "Drag to move, click to edit, right-click to delete" : ""}
-                      >
-                        {point.position}
+                      <Box key={index} sx={{ position: "relative" }}>
+                        {/* Main Point */}
+                        <Box
+                          onMouseDown={!editMode ? (e) => handlePointMouseDown(e, index) : undefined}
+                          onClick={!editMode ? (e) => handlePointClick(e, index) : undefined}
+                          sx={{
+                            position: "absolute",
+                            left: `calc(${point.x}% - 12px)`,
+                            top: `calc(${point.y}% - 12px)`,
+                            width: 24,
+                            height: 24,
+                            backgroundColor: "white",
+                            border: !editMode && dragPointIndex === index
+                              ? "3px solid #3F57FF"
+                              : selectedPointIndex === index
+                              ? "2px solid #FF6B6B"
+                              : "2px solid black",
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 12,
+                            fontWeight: 500,
+                            color: "black",
+                            zIndex: 10,
+                            cursor: editMode
+                              ? "default"
+                              : isDragging && dragPointIndex === index
+                              ? "grabbing"
+                              : "grab",
+                            userSelect: "none",
+                            transition: "all 0.2s ease",
+                            "&:hover": !editMode ? {
+                              backgroundColor: "#f0f0f0",
+                              transform: dragPointIndex === index ? "none" : "scale(1.1)",
+                              boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                            } : {},
+                          }}
+                          title={!editMode ? "Drag to move, click to select, click again to edit" : ""}
+                        >
+                          {point.position}
+                        </Box>
+                        
+                        {/* X Delete Icon - only show when point is selected */}
+                        {!editMode && selectedPointIndex === index && (
+                          <Box
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePoint(index);
+                            }}
+                            sx={{
+                              position: "absolute",
+                              left: `calc(${point.x}% - 8px)`,
+                              top: `calc(${point.y}% - 20px)`,
+                              width: 16,
+                              height: 16,
+                              backgroundColor: "#FF6B6B",
+                              border: "1px solid white",
+                              borderRadius: "50%",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 10,
+                              fontWeight: "bold",
+                              color: "white",
+                              cursor: "pointer",
+                              zIndex: 15,
+                              "&:hover": {
+                                backgroundColor: "#FF5252",
+                                transform: "scale(1.1)",
+                              },
+                            }}
+                            title="Delete point"
+                          >
+                            ×
+                          </Box>
+                        )}
                       </Box>
                     ))}
                   </Box>
@@ -1174,15 +1222,6 @@ const AddPartModal = ({
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setPointModal(false)}>Cancel</Button>
-          {!editMode && editingPointIndex !== null && (
-            <Button
-              onClick={() => handleDeletePoint(editingPointIndex)}
-              color="error"
-              startIcon={<DeleteIcon />}
-            >
-              Delete Point
-            </Button>
-          )}
           <Button
             onClick={handlePointSubmit}
             variant="contained"
