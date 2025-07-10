@@ -126,17 +126,52 @@ const AddPartModal = ({
 
   // Get existing image data for the current configuration
   const getExistingImageData = () => {
+    console.log("getExistingImageData called with:", {
+      part: form.part,
+      model: form.model,
+      variant: form.variant,
+      side: form.side,
+      existingPartsDataLength: existingPartsData?.length || 0
+    });
+
     if (!form.part || !form.model || !form.variant || !form.side || !existingPartsData) {
+      console.log("Missing required data for getExistingImageData");
       return null;
     }
 
+    // Helper function to get label from key
+    const getLabel = (options, key) => {
+      const option = options.find(opt => opt.key === key);
+      return option ? option.label : key;
+    };
+
+    // Convert current form keys to labels for comparison
+    const currentPart = getLabel(partOptions, form.part);
+    const currentModel = getLabel(modelOptions, form.model);
+    const currentVariant = getLabel(variantOptions, form.variant);
+    const currentSide = getLabel(sideOptions, form.side);
+
+    console.log("Comparing with labels:", {
+      currentPart, currentModel, currentVariant, currentSide
+    });
+
     // Find a part with same configuration (part, model, variant, side)
-    const matchingPart = existingPartsData.find(part => 
-      part.part === form.part &&
-      part.model === form.model &&
-      part.variant === form.variant &&
-      part.side === form.side
-    );
+    const matchingPart = existingPartsData.find(part => {
+      const match = part.part === currentPart &&
+                   part.model === currentModel &&
+                   part.variant === currentVariant &&
+                   part.side === currentSide;
+      
+      console.log("Checking part:", {
+        existing: { part: part.part, model: part.model, variant: part.variant, side: part.side },
+        current: { part: currentPart, model: currentModel, variant: currentVariant, side: currentSide },
+        match: match
+      });
+      
+      return match;
+    });
+
+    console.log("Found matching part:", matchingPart);
 
     if (matchingPart) {
       // Extract filename from image URL or create a generic name
@@ -145,13 +180,17 @@ const AddPartModal = ({
                       matchingPart.imageUrl.split('/').pop() || 'existing-image.jpg' : 
                       'existing-image.jpg');
       
-      return {
+      const result = {
         imageUrl: matchingPart.imageUrl,
         imageName: filename,
         imageSize: matchingPart.imageSize || null // If size is stored
       };
+      
+      console.log("Returning image data:", result);
+      return result;
     }
 
+    console.log("No matching part found");
     return null;
   };
 
@@ -161,12 +200,24 @@ const AddPartModal = ({
       return [];
     }
 
+    // Helper function to get label from key
+    const getLabel = (options, key) => {
+      const option = options.find(opt => opt.key === key);
+      return option ? option.label : key;
+    };
+
+    // Convert current form keys to labels for comparison
+    const currentPart = getLabel(partOptions, form.part);
+    const currentModel = getLabel(modelOptions, form.model);
+    const currentVariant = getLabel(variantOptions, form.variant);
+    const currentSide = getLabel(sideOptions, form.side);
+
     // Find parts with same configuration (part, model, variant, side)
     const matchingParts = existingPartsData.filter(part => 
-      part.part === form.part &&
-      part.model === form.model &&
-      part.variant === form.variant &&
-      part.side === form.side
+      part.part === currentPart &&
+      part.model === currentModel &&
+      part.variant === currentVariant &&
+      part.side === currentSide
     );
 
     // Extract all existing points from matching parts and mark them as read-only
@@ -187,12 +238,24 @@ const AddPartModal = ({
       return [];
     }
 
+    // Helper function to get label from key
+    const getLabel = (options, key) => {
+      const option = options.find(opt => opt.key === key);
+      return option ? option.label : key;
+    };
+
+    // Convert current form keys to labels for comparison
+    const currentPart = getLabel(partOptions, form.part);
+    const currentModel = getLabel(modelOptions, form.model);
+    const currentVariant = getLabel(variantOptions, form.variant);
+    const currentSide = getLabel(sideOptions, form.side);
+
     // Find parts with same configuration (part, model, variant, side)
     const matchingParts = existingPartsData.filter(part => 
-      part.part === form.part &&
-      part.model === form.model &&
-      part.variant === form.variant &&
-      part.side === form.side
+      part.part === currentPart &&
+      part.model === currentModel &&
+      part.variant === currentVariant &&
+      part.side === currentSide
     );
 
     // Extract all used positions from matching parts
@@ -223,6 +286,17 @@ const AddPartModal = ({
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
   };
+
+  // Debug: Log when modal opens and existingPartsData changes
+  useEffect(() => {
+    if (open && !editMode) {
+      console.log("Add New Part Modal opened:", {
+        existingPartsData: existingPartsData,
+        existingPartsDataLength: existingPartsData?.length || 0,
+        existingPartsDataSample: existingPartsData?.[0] || null
+      });
+    }
+  }, [open, editMode, existingPartsData]);
 
   // Auto-load image when configuration matches existing part
   useEffect(() => {
@@ -421,6 +495,41 @@ const AddPartModal = ({
 
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
+    
+    // Check for auto-load when all required fields are filled
+    if (!editMode && !form.imageUrl) {
+      const updatedForm = { ...form, [key]: value };
+      if (updatedForm.part && updatedForm.model && updatedForm.variant && updatedForm.side) {
+        console.log("All fields filled, checking for existing image...", updatedForm);
+        
+        // Use setTimeout to ensure state is updated
+        setTimeout(() => {
+          const existingImageData = getExistingImageData();
+          console.log("Manual check - Found existing image data:", existingImageData);
+          
+          if (existingImageData && !form.imageUrl) {
+            console.log("Auto-loading image manually...", existingImageData);
+            setForm(prev => ({
+              ...prev,
+              image: { 
+                name: existingImageData.imageName,
+                size: existingImageData.imageSize,
+                isAutoLoaded: true
+              },
+              imageUrl: existingImageData.imageUrl
+            }));
+            setProgress(100);
+            
+            // Load existing points
+            setTimeout(() => {
+              const existingPoints = getExistingPointsForImage();
+              console.log("Loading existing points manually:", existingPoints);
+              setTempMarkupPoints(existingPoints);
+            }, 100);
+          }
+        }, 50);
+      }
+    }
   };
 
   const handleDelete = () => {
