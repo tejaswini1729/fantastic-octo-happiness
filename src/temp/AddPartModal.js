@@ -116,6 +116,8 @@ const AddPartModal = ({
   const [modalPosition, setModalPosition] = useState({ x: 0, y: 0 });
   const [isDisabled, setIsDisabled] = useState(true);
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+  const [snackbarSeverity, setSnackbarSeverity] = useState("warning");
   const [progress, setProgress] = useState(0);
   const [step, setStep] = useState(1);
   const imageRef = useRef(null);
@@ -123,6 +125,7 @@ const AddPartModal = ({
   const [editingPointIndex, setEditingPointIndex] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
+  const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
 
   // Get existing image data for the current configuration
   const getExistingImageData = () => {
