@@ -610,6 +610,10 @@ const AddPartModal = ({
       if (editMode && step === 3) {
         // In edit mode, go back from step 3 to step 2
         setStep(2);
+      } else if (editMode && step === 2) {
+        // In edit mode step 2, cancel should close the modal
+        setIsDisabled(true);
+        onClose(resetData);
       } else {
         setStep((prevStep) => prevStep - 1);
       }
