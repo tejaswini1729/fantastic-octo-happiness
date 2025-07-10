@@ -262,6 +262,8 @@ const AddPartModal = ({
     if (!editMode && isDragging) return;
 
     event.stopPropagation();
+    
+    // Set the point data including the current position and category
     setPointData({
       position: point.position.toString(),
       category: point.category,
@@ -1304,7 +1306,8 @@ const AddPartModal = ({
                 label="Position"
                 disabled={editMode || !pointData.category} // Disable in edit mode or when category not selected
               >
-                {(editMode 
+                {/* In edit mode or when editing existing point, include the current position even if it would normally be filtered out */}
+                {(editMode || editingPointIndex !== null
                   ? (positionOptions[pointData.category] || [])
                   : getAvailablePositions(pointData.category)
                 ).length === 0 && pointData.category ? (
@@ -1312,7 +1315,7 @@ const AddPartModal = ({
                     No available positions for this configuration
                   </MenuItem>
                 ) : (
-                  (editMode 
+                  (editMode || editingPointIndex !== null
                     ? (positionOptions[pointData.category] || [])
                     : getAvailablePositions(pointData.category)
                   ).map((option) => (
