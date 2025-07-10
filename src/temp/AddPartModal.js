@@ -189,7 +189,7 @@ const AddPartModal = ({
     
     const point = tempMarkupPoints[dragPointIndex];
     // In edit mode, only allow moving the editable point
-    if (editMode && !point.isEditable) return;
+    if (editMode && !point?.isEditable) return;
 
     event.preventDefault();
     const img = imageRef.current;
@@ -204,7 +204,7 @@ const AddPartModal = ({
     const clampedX = Math.max(0, Math.min(100, xPercent));
     const clampedY = Math.max(0, Math.min(100, yPercent));
 
-    // Update the point position while dragging
+    // Update the point position while dragging, preserving isEditable property
     setTempMarkupPoints((prev) =>
       prev.map((point, index) =>
         index === dragPointIndex
@@ -425,14 +425,16 @@ const AddPartModal = ({
       };
 
       if (editingPointIndex !== null) {
-        // Update existing point
+        // Update existing point, preserving isEditable property in edit mode
         setTempMarkupPoints((prev) =>
           prev.map((point, index) =>
-            index === editingPointIndex ? newPoint : point
+            index === editingPointIndex 
+              ? { ...newPoint, isEditable: editMode ? point.isEditable : undefined }
+              : point
           )
         );
       } else {
-        // Add new point
+        // Add new point (only in add mode)
         setTempMarkupPoints((prev) => [...prev, newPoint]);
       }
 
@@ -1247,6 +1249,7 @@ const AddPartModal = ({
                   }))
                 }
                 label="Category"
+                disabled={editMode} // Disable in edit mode
               >
                 {categoryOptions.map((option) => (
                   <MenuItem key={option.key} value={option.key}>
@@ -1266,7 +1269,7 @@ const AddPartModal = ({
                   }))
                 }
                 label="Position"
-                disabled={!pointData.category}
+                disabled={editMode || !pointData.category} // Disable in edit mode or when category not selected
               >
                 {(positionOptions[pointData.category] || []).map((option) => (
                   <MenuItem key={option.key} value={option.key}>
@@ -1282,9 +1285,9 @@ const AddPartModal = ({
           <Button
             onClick={handlePointSubmit}
             variant="contained"
-            disabled={!pointData.position || !pointData.category}
+            disabled={editMode ? false : (!pointData.position || !pointData.category)} // In edit mode, always enable since values are readonly
           >
-            {editingPointIndex !== null ? "Update" : "Add"}
+            {editMode ? "Close" : (editingPointIndex !== null ? "Update" : "Add")}
           </Button>
         </DialogActions>
       </Dialog>
