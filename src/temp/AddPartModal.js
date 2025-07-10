@@ -105,7 +105,7 @@ const AddPartModal = ({
     image: null,
     imageUrl: null,
   };
-  console.log("existing dats",existingPartsData)
+
   const initial_tm_Data = [];
 
   const [form, setForm] = useState(initialFormData);
@@ -288,6 +288,7 @@ const AddPartModal = ({
     setStep(1);
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
+    setIsManuallyUploaded(false);
   };
 
   // Debug: Log when modal opens and existingPartsData changes
@@ -303,7 +304,7 @@ const AddPartModal = ({
 
   // Auto-load image when configuration matches existing part
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl) {
+    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded) {
       console.log("Checking for existing image data...", {
         part: form.part,
         model: form.model,
@@ -337,30 +338,35 @@ const AddPartModal = ({
         console.log("No existing image data found");
       }
     }
-  }, [form.part, form.model, form.variant, form.side, isManuallyUploaded]);
+  }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData]);
 
   // Update temp markup points when form changes (to include existing points for the image)
   useEffect(() => {
-    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && !isManuallyUploaded) {
+    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData) {
       const existingPoints = getExistingPointsForImage();
       // Keep only the new points (non-read-only) and merge with existing points
       const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
       setTempMarkupPoints([...existingPoints, ...newPoints]);
     }
-  }, [form.imageUrl, isManuallyUploaded]); // Only trigger when imageUrl changes and not manually uploaded
+  }, [form.imageUrl]); // Only trigger when imageUrl changes
 
   // Initialize edit mode data
   useEffect(() => {
     if (editMode && editData && open) {
+      // Helper function to get key from label
+      const getKey = (options, label) => {
+        const option = options.find(opt => opt.label === label);
+        return option ? option.key : label;
+      };
+
       setForm({
-        part: editData.partData.part,
-        model: editData.partData.model,
-        variant: editData.partData.variant,
-        side: editData.partData.side,
-        image: { name: "existing-image" }, // Mock file object
+        part: getKey(partOptions, editData.partData.part),
+        model: getKey(modelOptions, editData.partData.model),
+        variant: getKey(variantOptions, editData.partData.variant),
+        side: getKey(sideOptions, editData.partData.side),
+        image: { name: editData.partData.imageName || "existing-image", size: editData.partData.imageSize }, // Mock file object with proper data
         imageUrl: editData.partData.imageUrl,
       });
-      // setSide(editData.partData.side);
       
       // Set all markup points for the image, with the selected one marked as editable
       const allMarkupPoints = editData.partData.markupPoints || [];
@@ -499,9 +505,39 @@ const AddPartModal = ({
   const handleChange = (key, value) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     
-    // Reset manual upload flag when form configuration changes (but not when setting image/imageUrl)
-    if (!editMode && (key === 'part' || key === 'model' || key === 'variant' || key === 'side')) {
-      setIsManuallyUploaded(false);
+    // Check for auto-load when all required fields are filled
+    if (!editMode && !form.imageUrl) {
+      const updatedForm = { ...form, [key]: value };
+      if (updatedForm.part && updatedForm.model && updatedForm.variant && updatedForm.side) {
+        console.log("All fields filled, checking for existing image...", updatedForm);
+        
+        // Use setTimeout to ensure state is updated
+        setTimeout(() => {
+          const existingImageData = getExistingImageData();
+          console.log("Manual check - Found existing image data:", existingImageData);
+          
+          if (existingImageData && !form.imageUrl) {
+            console.log("Auto-loading image manually...", existingImageData);
+            setForm(prev => ({
+              ...prev,
+              image: { 
+                name: existingImageData.imageName,
+                size: existingImageData.imageSize,
+                isAutoLoaded: true
+              },
+              imageUrl: existingImageData.imageUrl
+            }));
+            setProgress(100);
+            
+            // Load existing points
+            setTimeout(() => {
+              const existingPoints = getExistingPointsForImage();
+              console.log("Loading existing points manually:", existingPoints);
+              setTempMarkupPoints(existingPoints);
+            }, 100);
+          }
+        }, 50);
+      }
     }
   };
 
@@ -516,20 +552,16 @@ const AddPartModal = ({
     
     handleChange("image", null);
     handleChange("imageUrl", null);
+    setIsManuallyUploaded(false); // Reset manual upload flag when deleting
     setProgress(0);
     setTempMarkupPoints([]); // Clear all points when image is deleted
   };
 
   function mapDataRecord() {
-    // Helper to get label from key or label
-    const getLabel = (options, value) => {
-      const found = options.find(opt => opt.key === value || opt.label === value);
-      return found ? found.label : value;
-    };
-
-    const getCategoryLabel = (value) => {
-      const found = categoryOptions.find(opt => opt.key === value || opt.label === value);
-      return found ? found.label : value;
+    // Helper function to get label from key
+    const getLabel = (options, key) => {
+      const option = options.find(opt => opt.key === key);
+      return option ? option.label : key;
     };
 
     const data = {
@@ -538,13 +570,16 @@ const AddPartModal = ({
       variant: getLabel(variantOptions, form.variant),
       side: getLabel(sideOptions, form.side),
       imageUrl: form.imageUrl,
+      imageName: form.image?.name || null,
+      imageSize: form.image?.size || null,
       markupPoints: tempMarkupPoints
-        .filter(point => !point.isReadOnly)
+        .filter(point => !point.isReadOnly && (!editMode || point.isEditable)) // Include only new points or editable points
         .map((point) => ({
           x: point.x,
           y: point.y,
           position: point.position,
-          category: getCategoryLabel(point.category),
+          category: point.category,
+          // Don't include isEditable, isReadOnly in the final data
         })),
     };
     return data;
@@ -587,7 +622,7 @@ const AddPartModal = ({
   };
 
   const handleClose = (e) => {
-    if (e.target.name === ADD_MDL?.BTN_LBL1) {
+    if (e?.target?.name === ADD_MDL?.BTN_LBL1) {
       setIsDisabled(true);
       onClose(resetData);
     } else {
@@ -604,24 +639,31 @@ const AddPartModal = ({
   const handleImageSelect = (e) => {
     e.preventDefault();
     setSnackbarOpen(false);
-    const file = e.target.files?.[0];
+    
+    // Handle both drag drop and file input
+    const file = e.target.files?.[0] || (e.dataTransfer && e.dataTransfer.files?.[0]);
 
     if (file) {
       const maxSize = 2 * 1024 * 1024; // 2MB
       if (file.size > maxSize) {
+        setSnackbarMessage(ADD_MDL?.IMG_INFO_ERR || "File size too large. Maximum size is 2MB.");
+        setSnackbarSeverity("warning");
         setSnackbarOpen(true);
-        e.target.value = "";
+        if (e.target.value) e.target.value = "";
         return;
       }
 
       handleChange("image", file);
+      setIsManuallyUploaded(true); // Mark as manually uploaded
       const reader = new FileReader();
       reader.onload = (e) => {
         handleChange("imageUrl", e.target.result);
-        setTempMarkupPoints([]);
+        setTempMarkupPoints([]); // Clear points when new image is uploaded
       };
       reader.onerror = () => {
         console.error("File reading error");
+        setSnackbarMessage("Error reading file. Please try again.");
+        setSnackbarSeverity("error");
         setSnackbarOpen(true);
       };
       reader.readAsDataURL(file);
@@ -636,11 +678,19 @@ const AddPartModal = ({
     }
   };
 
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleImageSelect(e);
+  };
+
   const handleImageClick = (event) => {
     if (!form.imageUrl || !imageRef.current) return;
-    
-    // Don't allow adding new points in edit mode
-    if (editMode) return;
 
     event.preventDefault();
     event.stopPropagation();
@@ -682,6 +732,20 @@ const AddPartModal = ({
         category: pointData.category,
       };
 
+      // Check for position uniqueness (only in add mode and when adding new point)
+      if (!editMode && editingPointIndex === null) {
+        const existingPoint = tempMarkupPoints.find(
+          point => point.position === newPoint.position && point.category === newPoint.category
+        );
+        if (existingPoint) {
+          // Position already exists, show error or handle accordingly
+          setSnackbarMessage(`Position ${newPoint.position} with category ${newPoint.category} already exists.`);
+          setSnackbarSeverity("error");
+          setSnackbarOpen(true);
+          return;
+        }
+      }
+
       if (editingPointIndex !== null) {
         // Update existing point, preserving isEditable property in edit mode
         setTempMarkupPoints((prev) =>
@@ -693,11 +757,16 @@ const AddPartModal = ({
         );
       } else {
         // Add new point (only in add mode)
-        setTempMarkupPoints((prev) => [...prev, newPoint]);
+        if (!editMode) {
+          setTempMarkupPoints((prev) => [...prev, newPoint]);
+        }
       }
 
       setPointModal(false);
-      setPointData({ position: "", category: "" });
+      // Only reset pointData in add mode, preserve it in edit mode
+      if (!editMode) {
+        setPointData({ position: "", category: "" });
+      }
       setEditingPointIndex(null);
     }
   };
@@ -779,10 +848,7 @@ const AddPartModal = ({
               : ADD_MDL?.TTL3}
           </Typography>
           <IconButton
-            onClick={(e) => {
-              e.target.name = ADD_MDL?.BTN_LBL1;
-              handleClose(e);
-            }}
+            onClick={handleClose}
             sx={{
               position: "absolute",
               top: 0,
@@ -921,7 +987,7 @@ const AddPartModal = ({
                       letterSpacing: "0%",
                     }}
                   >
-                    {form.image.isAutoLoaded?"":form.image.name}
+                    {form.image.name}
                   </Typography>
                   <Typography
                     sx={{
@@ -994,8 +1060,8 @@ const AddPartModal = ({
               </Box>
             ) : (
               <Box
-                onDrop={handleImageSelect}
-                onDragOver={(e) => e.preventDefault()}
+                onDrop={handleDrop}
+                onDragOver={handleDragOver}
                 sx={{
                   border: "0.8px dashed #D2D3D3",
                   p: 3,
@@ -1330,7 +1396,6 @@ const AddPartModal = ({
 
         {(step === 3 || (editMode && step === 3)) && (
           <DialogContent sx={{ pt: 3 }}>
-            {console.log("I am caled123", form)}
             <Box
               sx={{
                 display: "flex",
@@ -1392,26 +1457,30 @@ const AddPartModal = ({
                 <Typography>
                   Position Added :
                   <strong>
-                    {tempMarkupPoints.length > 0
-                      ? tempMarkupPoints.map((point, index) => (
-                          <span key={index}>
-                            {point.position}
-                            {index < tempMarkupPoints.length - 1 ? ", " : ""}
-                          </span>
-                        ))
+                    {tempMarkupPoints.filter(point => !point.isReadOnly || (editMode && point.isEditable)).length > 0
+                      ? tempMarkupPoints
+                          .filter(point => !point.isReadOnly || (editMode && point.isEditable))
+                          .map((point, index) => (
+                            <span key={index}>
+                              {point.position}
+                              {index < tempMarkupPoints.filter(p => !p.isReadOnly || (editMode && p.isEditable)).length - 1 ? ", " : ""}
+                            </span>
+                          ))
                       : "No points added"}
                   </strong>
                 </Typography>
                 <Typography>
                   Category:
                   <strong>
-                    {tempMarkupPoints.length > 0
-                      ? tempMarkupPoints.map((point, index) => (
-                          <span key={index}>
-                            {categoryOptions.find(c => c.key === point.category)?.label || point.category}
-                            {index < tempMarkupPoints.length - 1 ? ", " : ""}
-                          </span>
-                        ))
+                    {tempMarkupPoints.filter(point => !point.isReadOnly || (editMode && point.isEditable)).length > 0
+                      ? tempMarkupPoints
+                          .filter(point => !point.isReadOnly || (editMode && point.isEditable))
+                          .map((point, index) => (
+                            <span key={index}>
+                              {categoryOptions.find(c => c.key === point.category)?.label || point.category}
+                              {index < tempMarkupPoints.filter(p => !p.isReadOnly || (editMode && p.isEditable)).length - 1 ? ", " : ""}
+                            </span>
+                          ))
                       : "No points added"}
                   </strong>
                 </Typography>
@@ -1472,11 +1541,11 @@ const AddPartModal = ({
         <Alert
           open={snackbarOpen}
           onClose={() => setSnackbarOpen(false)}
-          title="Warning"
-          message={ADD_MDL?.IMG_INFO_ERR}
-          severity={"warning"}
+          title={snackbarSeverity === "error" ? "Error" : "Warning"}
+          message={snackbarMessage || ADD_MDL?.IMG_INFO_ERR}
+          severity={snackbarSeverity}
           sx={{
-            backgroundColor: "#FFAA00",
+            backgroundColor: snackbarSeverity === "error" ? "#FF5252" : "#FFAA00",
             color: "black",
             "& .MuiAlert-icon": {
               color: "black",
