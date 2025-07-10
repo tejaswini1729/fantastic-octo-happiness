@@ -357,13 +357,16 @@ const AddPartModal = ({
   };
 
   const handleImageClick = (event) => {
-    if (!form.imageUrl || !imageRef.current || editMode) return;
+    if (!form.imageUrl || !imageRef.current) return;
 
     event.preventDefault();
     event.stopPropagation();
 
     // Clear any selected point when clicking on empty area
     setSelectedPointIndex(null);
+
+    // Don't add new points in edit mode
+    if (editMode) return;
 
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
@@ -856,7 +859,7 @@ const AddPartModal = ({
                       height: "auto",
                       display: "inline-block",
                     }}
-                    onClick={!editMode ? handleImageClick : undefined}
+                    onClick={handleImageClick}
                     onMouseMove={handleMouseMove}
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
