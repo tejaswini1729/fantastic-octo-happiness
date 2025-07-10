@@ -371,7 +371,8 @@ const AddPartModal = ({
 
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
-
+    
+    // Simple percentage calculation relative to the image container
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
