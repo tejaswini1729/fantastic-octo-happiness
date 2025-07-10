@@ -232,13 +232,15 @@ const AddPartModal = ({
         model: form.model,
         variant: form.variant,
         side: form.side,
-        existingPartsData: existingPartsData
+        existingPartsData: existingPartsData.length,
+        existingPartsDataSample: existingPartsData[0]
       });
       
       const existingImageData = getExistingImageData();
       console.log("Found existing image data:", existingImageData);
       
       if (existingImageData) {
+        console.log("Auto-loading image...", existingImageData);
         // Auto-load the existing image with proper file data
         handleChange("image", { 
           name: existingImageData.imageName,
@@ -251,8 +253,11 @@ const AddPartModal = ({
         // Load existing points after image is set
         setTimeout(() => {
           const existingPoints = getExistingPointsForImage();
+          console.log("Loading existing points:", existingPoints);
           setTempMarkupPoints(existingPoints);
         }, 100);
+      } else {
+        console.log("No existing image data found");
       }
     }
   }, [form.part, form.model, form.variant, form.side]);
