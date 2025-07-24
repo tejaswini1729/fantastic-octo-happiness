@@ -137,6 +137,7 @@ const AddPartModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
+  const [dragStarted, setDragStarted] = useState(false); // Track if drag actually occurred
   const [hasDragged, setHasDragged] = useState(false); // Track if user has dragged
 
 
@@ -502,7 +503,7 @@ const AddPartModal = ({
       event.stopPropagation();
       setIsDragging(true);
       setDragPointIndex(pointIndex);
-      setHasDragged(false); // Reset drag flag when starting drag
+      setDragStarted(false); // Reset drag flag when starting drag
     }
   };
 
@@ -516,6 +517,12 @@ const AddPartModal = ({
     if (editMode && !point?.isEditable) return;
 
     event.preventDefault();
+    
+    // Mark that dragging actually occurred (any mouse movement during drag)
+    if (!dragStarted) {
+      setDragStarted(true);
+    }
+    
     const img = imageRef.current;
     const rect = img.getBoundingClientRect();
 
@@ -541,6 +548,11 @@ const AddPartModal = ({
   const handleMouseUp = () => {
     setIsDragging(false);
     setDragPointIndex(null);
+    
+    // Reset dragStarted after a short delay to allow click handler to check it
+    setTimeout(() => {
+      setDragStarted(false);
+    }, 50);
   };
 
   // Handle point click for editing
@@ -552,8 +564,13 @@ const AddPartModal = ({
 
     // In edit mode, only allow clicking the editable point
     if (editMode && !point.isEditable) return;
-    // In add mode, allow clicking any non-read-only point if not dragging
-    if (!editMode && isDragging) return;
+    
+    // Don't open modal if dragging just occurred
+    if (dragStarted) {
+      console.log("Drag detected, not opening modal");
+      setDragStarted(false); // Reset for next interaction
+      return;
+    }
 
     event.stopPropagation();
 
