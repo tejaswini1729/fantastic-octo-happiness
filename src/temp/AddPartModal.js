@@ -559,17 +559,30 @@ const AddPartModal = ({
     // In edit mode, make sure we're preserving the original point data
     console.log("Setting pointData from point:", {
       position: point.position,
+      positionType: typeof point.position,
       category: point.category,
       positionString: point.position.toString(),
       availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label })),
-      availablePositionOptions: positionOptions[point.category] || []
+      availablePositionOptions: positionOptions[point.category] || [],
+      positionOptionsForCategoryKey: categoryOptions.find(opt => opt.label === point.category)?.key
     });
 
     // Ensure the category matches one of the available options
     const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
     
+    // Get position options for the correct category key (not the label)
+    const availablePositions = positionOptions[categoryKey] || [];
+    console.log("Position options for category key", categoryKey, ":", availablePositions);
+    
     // Ensure the position matches one of the available options for this category
     const positionKey = point.position.toString();
+    const positionExists = availablePositions.some(opt => opt.key === positionKey);
+    
+    console.log("Position mapping check:", {
+      positionKey: positionKey,
+      positionExists: positionExists,
+      availableKeys: availablePositions.map(opt => opt.key)
+    });
 
     setPointData({
       position: positionKey,
@@ -943,6 +956,7 @@ useEffect(() => {
     if (point && point.isEditable) {
       console.log("Maintaining point data in edit mode:", {
         position: point.position,
+        positionType: typeof point.position,
         category: point.category,
         img_pos_id: point.img_pos_id,
         availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label })),
@@ -952,8 +966,19 @@ useEffect(() => {
       // Ensure the category matches one of the available options
       const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
       
+      // Get position options for the correct category key (not the label)
+      const availablePositions = positionOptions[categoryKey] || [];
+      console.log("UseEffect - Position options for category key", categoryKey, ":", availablePositions);
+      
       // Ensure the position matches one of the available options for this category
       const positionKey = point.position.toString();
+      const positionExists = availablePositions.some(opt => opt.key === positionKey);
+      
+      console.log("UseEffect - Position mapping check:", {
+        positionKey: positionKey,
+        positionExists: positionExists,
+        availableKeys: availablePositions.map(opt => opt.key)
+      });
 
       setPointData({
         position: positionKey,
@@ -1466,17 +1491,32 @@ return (
                         key={point.img_pos_id || index}
                         sx={{
                           position: "absolute",
-                          left: `calc(${point.x}% - 12px)`,
-                          top: `calc(${point.y}% - 12px)`,
-                          width: 24,
-                          height: 24,
+                          left: `calc(${point.x}% - ${(() => {
+                            const digitLength = point.position.toString().length;
+                            return digitLength === 1 ? '10px' : digitLength === 2 ? '12px' : '14px';
+                          })()})`,
+                          top: `calc(${point.y}% - ${(() => {
+                            const digitLength = point.position.toString().length;
+                            return digitLength === 1 ? '10px' : digitLength === 2 ? '12px' : '14px';
+                          })()})`,
+                          width: (() => {
+                            const digitLength = point.position.toString().length;
+                            return digitLength === 1 ? 20 : digitLength === 2 ? 24 : 28;
+                          })(),
+                          height: (() => {
+                            const digitLength = point.position.toString().length;
+                            return digitLength === 1 ? 20 : digitLength === 2 ? 24 : 28;
+                          })(),
                           backgroundColor: backgroundColor,
                           border: borderColor,
                           borderRadius: "50%",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          fontSize: 12,
+                          fontSize: (() => {
+                            const digitLength = point.position.toString().length;
+                            return digitLength === 1 ? 11 : digitLength === 2 ? 12 : 10;
+                          })(),
                           fontWeight: 500,
                           color: "black",
                           zIndex: 10,
