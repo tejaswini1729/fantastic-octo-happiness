@@ -680,28 +680,45 @@ function mapDataRecord() {
     imageUrl: form.imageUrl,
     imageName: form.image?.name || null,
     imageSize: form.image?.size || null,
-    markupPoints: tempMarkupPoints
-      .filter(point => !point.isReadOnly && (!editMode || point.isEditable)) // Include only new points or editable points
-      .map((point) => {
-        const basePoint = {
-          x: point.x,
-          y: point.y,
-          position: point.position,
-          category: point.category,
-        };
+    markupPoints: (() => {
+      if (editMode) {
+        // In edit mode, include ALL points for this image
+        return tempMarkupPoints.map((point) => {
+          const basePoint = {
+            x: point.x,
+            y: point.y,
+            position: point.position,
+            category: point.category,
+            img_pos_id: point.img_pos_id || null, // Include img_pos_id for existing points
+          };
 
-        // In edit mode, if this point was the one being edited (isEditable), add method: "UPDATE"
-        if (editMode && point.isEditable) {
-          basePoint.method = "UPDATE";
-        }
+          // Only add method: "UPDATE" to the point that was actually edited (isEditable)
+          if (point.isEditable) {
+            basePoint.method = "UPDATE";
+          }
 
-        return basePoint;
-      }),
+          return basePoint;
+        });
+      } else {
+        // In add mode, include only new points (not read-only)
+        return tempMarkupPoints
+          .filter(point => !point.isReadOnly)
+          .map((point) => ({
+            x: point.x,
+            y: point.y,
+            position: point.position,
+            category: point.category,
+          }));
+      }
+    })(),
   };
 
   console.log("mapDataRecord result:", {
     editMode: editMode,
-    filteredPoints: tempMarkupPoints.filter(point => !point.isReadOnly && (!editMode || point.isEditable)),
+    totalPoints: tempMarkupPoints.length,
+    readOnlyPoints: tempMarkupPoints.filter(point => point.isReadOnly).length,
+    editablePoints: tempMarkupPoints.filter(point => point.isEditable).length,
+    finalMarkupPoints: data.markupPoints,
     finalData: data
   });
 
@@ -1501,27 +1518,27 @@ return (
                           left: `calc(${point.x}% - ${(() => {
                             const digitLength = point.position.toString().length;
                             console.log("Circle sizing - Position:", point.position, "DigitLength:", digitLength);
-                            if (digitLength === 1) return '14px';  // half of 28px
-                            if (digitLength === 2) return '17px';  // half of 34px
-                            return '20px'; // half of 40px for 3+ digits
+                            if (digitLength === 1) return '11px';  // half of 22px
+                            if (digitLength === 2) return '13px';  // half of 26px
+                            return '15px'; // half of 30px for 3+ digits
                           })()})`,
                           top: `calc(${point.y}% - ${(() => {
                             const digitLength = point.position.toString().length;
-                            if (digitLength === 1) return '14px';  // half of 28px
-                            if (digitLength === 2) return '17px';  // half of 34px
-                            return '20px'; // half of 40px for 3+ digits
+                            if (digitLength === 1) return '11px';  // half of 22px
+                            if (digitLength === 2) return '13px';  // half of 26px
+                            return '15px'; // half of 30px for 3+ digits
                           })()})`,
                           minWidth: (() => {
                             const digitLength = point.position.toString().length;
-                            if (digitLength === 1) return '28px';  // More space for 1 digit
-                            if (digitLength === 2) return '34px';  // More space for 2 digits
-                            return '40px'; // More space for 3+ digits
+                            if (digitLength === 1) return '22px';  // Reduced from 28px
+                            if (digitLength === 2) return '26px';  // Reduced from 34px
+                            return '30px'; // Reduced from 40px for 3+ digits
                           })(),
                           minHeight: (() => {
                             const digitLength = point.position.toString().length;
-                            if (digitLength === 1) return '28px';
-                            if (digitLength === 2) return '34px';
-                            return '40px'; // 3+ digits
+                            if (digitLength === 1) return '22px';  // Reduced from 28px
+                            if (digitLength === 2) return '26px';  // Reduced from 34px
+                            return '30px'; // Reduced from 40px for 3+ digits
                           })(),
                           backgroundColor: backgroundColor,
                           border: borderColor,
