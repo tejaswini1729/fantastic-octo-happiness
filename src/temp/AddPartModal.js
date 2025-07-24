@@ -935,6 +935,7 @@ function mapDataRecord() {
   };
 
   const data = {
+    id: editMode ? editData?.partData?.id : undefined, // Add id for edit mode
     part: getLabel(partOptions, form.part),
     model: getLabel(modelOptions, form.model),
     variant: getLabel(variantOptions, form.variant),
