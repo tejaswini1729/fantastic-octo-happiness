@@ -557,9 +557,19 @@ const AddPartModal = ({
 
     // Set the point data including the current position and category
     // In edit mode, make sure we're preserving the original point data
+    console.log("Setting pointData from point:", {
+      position: point.position,
+      category: point.category,
+      positionString: point.position.toString(),
+      availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label }))
+    });
+
+    // Ensure the category matches one of the available options
+    const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
+
     setPointData({
       position: point.position.toString(),
-      category: point.category,
+      category: categoryKey,
     });
     setCurrentPoint({ x: point.x, y: point.y });
 
@@ -630,6 +640,34 @@ const AddPartModal = ({
   setProgress(0);
   setTempMarkupPoints([]); // Clear all points when image is deleted
 };
+
+function mapDataRecord() {
+  // Helper function to get label from key
+  const getLabel = (options, key) => {
+    const option = options.find(opt => opt.key === key);
+    return option ? option.label : key;
+  };
+
+  const data = {
+    part: getLabel(partOptions, form.part),
+    model: getLabel(modelOptions, form.model),
+    variant: getLabel(variantOptions, form.variant),
+    side: getLabel(sideOptions, form.side),
+    imageUrl: form.imageUrl,
+    imageName: form.image?.name || null,
+    imageSize: form.image?.size || null,
+    markupPoints: tempMarkupPoints
+      .filter(point => !point.isReadOnly && (!editMode || point.isEditable)) // Include only new points or editable points
+      .map((point) => ({
+        x: point.x,
+        y: point.y,
+        position: point.position,
+        category: point.category,
+        // Don't include isEditable, isReadOnly in the final data
+      })),
+  };
+  return data;
+}
 
 const hanldeOnNext = () => {
   if (editMode && step === 3) {
@@ -768,6 +806,8 @@ const handleImageClick = (event) => {
 };
 
 const handlePointSubmit = () => {
+  console.log("handlePointSubmit called with:", { pointData, editMode, editingPointIndex });
+  
   if (pointData.position && pointData.category) {
     const newPoint = {
       x: currentPoint.x,
@@ -775,6 +815,8 @@ const handlePointSubmit = () => {
       position: parseInt(pointData.position),
       category: pointData.category,
     };
+
+    console.log("Created newPoint:", newPoint);
 
     // Check for position uniqueness (only in add mode and when adding new point)
     if (!editMode && editingPointIndex === null) {
@@ -883,11 +925,16 @@ useEffect(() => {
       console.log("Maintaining point data in edit mode:", {
         position: point.position,
         category: point.category,
-        img_pos_id: point.img_pos_id
+        img_pos_id: point.img_pos_id,
+        availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label }))
       });
+
+      // Ensure the category matches one of the available options
+      const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
+
       setPointData({
         position: point.position.toString(),
-        category: point.category,
+        category: categoryKey,
       });
     }
   }
@@ -901,6 +948,11 @@ useEffect(() => {
       editMode: editMode
     });
   }, [tempMarkupPoints, editMode]);
+
+  // Debug effect to track pointData changes
+  useEffect(() => {
+    console.log("pointData changed:", pointData);
+  }, [pointData]);
 
 
 return (
@@ -1706,6 +1758,7 @@ return (
           : "Add Markup Point"}
       </DialogTitle>
       <DialogContent sx={{ pt: 3 }}>
+        {console.log("Point modal rendering with pointData:", pointData, "editMode:", editMode)}
         <Box display="flex" flexDirection="column" gap={3}>
           <Box
             component="img"
