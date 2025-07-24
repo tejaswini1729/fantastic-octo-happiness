@@ -128,7 +128,20 @@ const AddPartModal = ({
   const initial_tm_Data = [];
 
   const [form, setForm] = useState(initialFormData);
-  const [tempMarkupPoints, setTempMarkupPoints] = useState(initial_tm_Data);
+  const [tempMarkupPoints, setTempMarkupPointsOriginal] = useState(initial_tm_Data);
+  
+  // Wrapper to track ALL setTempMarkupPoints calls
+  const setTempMarkupPoints = (newPoints) => {
+    console.log("🔥 setTempMarkupPoints CALLED:", {
+      editMode,
+      editModePointsSet,
+      currentLength: tempMarkupPoints.length,
+      newLength: Array.isArray(newPoints) ? newPoints.length : 'not array',
+      newPoints: newPoints,
+      stackTrace: new Error().stack.split('\n')[1] // Show where this call came from
+    });
+    setTempMarkupPointsOriginal(newPoints);
+  };
   const [currentPoint, setCurrentPoint] = useState({ x: 0, y: 0 });
   const [pointModal, setPointModal] = useState(false);
   const [pointData, setPointData] = useState({ position: "", category: "" });
@@ -335,6 +348,14 @@ const AddPartModal = ({
   };
 
   const resetData = () => {
+    console.log("🔄 resetData called in:", { editMode, editModePointsSet });
+    
+    // Don't reset in edit mode if points have been set
+    if (editMode && editModePointsSet) {
+      console.log("🚨 resetData: Skipping reset because edit mode points are set");
+      return;
+    }
+    
     setForm(initialFormData);
     setTempMarkupPoints(initial_tm_Data);
     setStep(1);
@@ -558,103 +579,85 @@ const AddPartModal = ({
         category: editData.markupPoint.category,
       });
 
-      // CRITICAL DEBUG: Let's see exactly what data we have available
-      console.log("🔍 DETAILED DEBUG - ALL AVAILABLE DATA:");
-      console.log("📋 editData:", editData);
-      console.log("📋 editData.partData:", editData?.partData);
-      console.log("📋 editData.markupPoint:", editData?.markupPoint);
+      // IMMEDIATE: Load ALL markup points directly from existingPartsData RIGHT NOW
+      // Don't wait for setTimeout - do it immediately when edit mode opens
+      console.log("🔍 IMMEDIATE EDIT MODE LOADING:");
       console.log("📋 existingPartsData:", existingPartsData);
       console.log("📋 existingPartsData.markupPoints:", existingPartsData?.markupPoints);
-      console.log("📋 existingPartsData.markupPoints length:", existingPartsData?.markupPoints?.length);
-
-      // CRITICAL: Load ALL markup points directly from existingPartsData
-      // Since we know existingPartsData contains all points for this image
-      setTimeout(() => {
-        console.log("🔄 EDIT MODE: Loading all points directly from existingPartsData...");
-        console.log("🔄 EDIT MODE: existingPartsData.markupPoints:", existingPartsData?.markupPoints);
+      
+      if (existingPartsData && existingPartsData.markupPoints && existingPartsData.markupPoints.length > 0) {
+        console.log("✅ IMMEDIATE: Found points in existingPartsData:", existingPartsData.markupPoints);
         
-        // First, let's see if existingPartsData has the points
-        if (existingPartsData && existingPartsData.markupPoints) {
-          console.log("✅ EDIT MODE: existingPartsData.markupPoints exists with length:", existingPartsData.markupPoints.length);
-          console.log("✅ EDIT MODE: All points in existingPartsData:", existingPartsData.markupPoints);
+        const allExistingPoints = existingPartsData.markupPoints.map(point => ({
+          ...point,
+          partId: existingPartsData.id,
+          img_pos_id: point.img_pos_id,
+          isReadOnly: true,
+          isEditable: false
+        }));
+        
+        const editablePoint = editData.markupPoint;
+        console.log("🎯 IMMEDIATE: Editable point to match:", editablePoint);
+        
+        // Mark only the selected point as editable
+        const finalPoints = allExistingPoints.map(point => {
+          const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id;
           
-          if (existingPartsData.markupPoints.length > 0) {
-            // We have markup points - use them all
-            console.log("✅ EDIT MODE: Processing", existingPartsData.markupPoints.length, "markup points");
-            
-            const allExistingPoints = existingPartsData.markupPoints.map(point => ({
-              ...point,
-              partId: existingPartsData.id,
-              img_pos_id: point.img_pos_id,
-              isReadOnly: true,
-              isEditable: false
-            }));
-            
-            const editablePoint = editData.markupPoint;
-            console.log("🎯 EDIT MODE: Editable point to match:", editablePoint);
-            console.log("🎯 EDIT MODE: Looking for img_pos_id:", editablePoint.img_pos_id);
-            
-            // Mark only the selected point as editable
-            const finalPoints = allExistingPoints.map(point => {
-              const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id;
-              
-              console.log("🔍 Checking point:", {
-                pointId: point.img_pos_id,
-                editableId: editablePoint.img_pos_id,
-                isMatch: isThisPointEditable,
-                pointPosition: point.position,
-                editablePosition: editablePoint.position
-              });
-              
-              return {
-                ...point,
-                isEditable: isThisPointEditable,
-                isReadOnly: !isThisPointEditable
-              };
-            });
-            
-            console.log("✅ EDIT MODE: Setting final points directly:", finalPoints);
-            console.log("📊 EDIT MODE: Final counts:", {
-              total: finalPoints.length,
-              editable: finalPoints.filter(p => p.isEditable).length,
-              readOnly: finalPoints.filter(p => p.isReadOnly).length
-            });
-            
-            setTempMarkupPoints(finalPoints);
-            setEditModePointsSet(true); // Mark that edit mode points have been set
-            
-            // Verify what was actually set
-            setTimeout(() => {
-              console.log("🔄 VERIFICATION: tempMarkupPoints after setting:", finalPoints);
-            }, 100);
-            
-          } else {
-            console.log("❌ EDIT MODE: existingPartsData.markupPoints is empty array");
-            // Create single point from editData
-            const singlePoint = {
-              ...editData.markupPoint,
-              partId: editData.partData?.id || 'unknown',
-              isReadOnly: false,
-              isEditable: true
-            };
-            console.log("❌ EDIT MODE: Creating single point:", singlePoint);
-            setTempMarkupPoints([singlePoint]);
-          }
-        } else {
-          console.log("❌ EDIT MODE: existingPartsData.markupPoints does not exist");
-          console.log("❌ EDIT MODE: existingPartsData:", existingPartsData);
-          
-          // Create single point from editData
-          const singlePoint = {
-            ...editData.markupPoint,
-            partId: editData.partData.id,
-            isReadOnly: false,
-            isEditable: true
+          return {
+            ...point,
+            isEditable: isThisPointEditable,
+            isReadOnly: !isThisPointEditable
           };
-          console.log("❌ EDIT MODE: Creating single point fallback:", singlePoint);
-          setTempMarkupPoints([singlePoint]);
+        });
+        
+        console.log("✅ IMMEDIATE: Setting points immediately:", finalPoints);
+        setTempMarkupPoints(finalPoints);
+        setEditModePointsSet(true);
+        
+        console.log("📊 IMMEDIATE: Final counts:", {
+          total: finalPoints.length,
+          editable: finalPoints.filter(p => p.isEditable).length,
+          readOnly: finalPoints.filter(p => p.isReadOnly).length
+        });
+      } else {
+        console.log("❌ IMMEDIATE: No points found, creating single point");
+        const singlePoint = {
+          ...editData.markupPoint,
+          partId: editData.partData?.id || 'unknown',
+          isReadOnly: false,
+          isEditable: true
+        };
+        setTempMarkupPoints([singlePoint]);
+        setEditModePointsSet(true);
+      }
+
+      // ALSO keep the setTimeout as backup in case immediate loading doesn't work
+      setTimeout(() => {
+        console.log("🔄 BACKUP: Checking if points are still correct after 200ms...");
+        if (tempMarkupPoints.length === 1 && existingPartsData?.markupPoints?.length > 1) {
+          console.log("🔄 BACKUP: Points were lost, reloading...");
+          // Repeat the same logic as backup
+          const allExistingPoints = existingPartsData.markupPoints.map(point => ({
+            ...point,
+            partId: existingPartsData.id,
+            img_pos_id: point.img_pos_id,
+            isReadOnly: true,
+            isEditable: false
+          }));
+          
+          const editablePoint = editData.markupPoint;
+          const finalPoints = allExistingPoints.map(point => ({
+            ...point,
+            isEditable: point.img_pos_id === editablePoint.img_pos_id,
+            isReadOnly: point.img_pos_id !== editablePoint.img_pos_id
+          }));
+          
+          console.log("🔄 BACKUP: Re-setting points:", finalPoints);
+          setTempMarkupPoints(finalPoints);
+        } else {
+          console.log("🔄 BACKUP: Points are correct, no action needed");
         }
-      }, 200); // Increased delay to ensure all data is available
+      }, 200);
     } else if (!editMode) {
       resetData();
     }
@@ -1218,7 +1221,38 @@ useEffect(() => {
   }
   }, [editMode, pointModal, editingPointIndex, tempMarkupPoints]);
 
-  // Ensure category options are loaded and pointData is set correctly when modal opens
+  // Protective useEffect to maintain edit mode points
+  useEffect(() => {
+    if (editMode && editModePointsSet && tempMarkupPoints.length === 1 && existingPartsData?.markupPoints?.length > 1) {
+      console.log("🚨 PROTECTION: Edit mode points were lost, restoring them!");
+      console.log("🚨 PROTECTION: Restoring from existingPartsData.markupPoints");
+      
+      // Restore the points
+      const allExistingPoints = existingPartsData.markupPoints.map(point => ({
+        ...point,
+        partId: existingPartsData.id,
+        img_pos_id: point.img_pos_id,
+        isReadOnly: true,
+        isEditable: false
+      }));
+      
+      const editablePoint = editData.markupPoint;
+      
+      // Mark only the selected point as editable
+      const finalPoints = allExistingPoints.map(point => {
+        const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id;
+        
+        return {
+          ...point,
+          isEditable: isThisPointEditable,
+          isReadOnly: !isThisPointEditable
+        };
+      });
+      
+      console.log("🚨 PROTECTION: Restoring points:", finalPoints);
+      setTempMarkupPoints(finalPoints);
+    }
+  }, [editMode, editModePointsSet, tempMarkupPoints.length, existingPartsData, editData]);
   useEffect(() => {
     if (open) {
       console.log("🔄 Modal opened - categoryOptions:", categoryOptions);
@@ -1798,7 +1832,9 @@ return (
                           padding: '3px', // Reduced padding for more compact look
                           boxSizing: 'border-box',
                           textAlign: 'center',
-                          lineHeight: '1',
+                          lineHeight: '1', // Ensure consistent line height
+                          fontFamily: 'Arial, sans-serif', // Use consistent font
+                          letterSpacing: 'normal', // Reset any letter spacing
                           zIndex: 10,
                           cursor: isReadOnly || !isEditable
                             ? "default"
