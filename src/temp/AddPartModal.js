@@ -606,10 +606,22 @@ const AddPartModal = ({
         
         const editablePoint = editData.markupPoint;
         console.log("🎯 IMMEDIATE: Editable point to match:", editablePoint);
+        console.log("🎯 IMMEDIATE: editablePoint.img_pos_id:", editablePoint.img_pos_id);
+        console.log("🎯 IMMEDIATE: All points img_pos_ids:", allExistingPoints.map(p => p.img_pos_id));
         
         // Mark only the selected point as editable
         const finalPoints = allExistingPoints.map(point => {
           const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id;
+          
+          console.log("🔍 IMMEDIATE: Checking point:", {
+            pointId: point.img_pos_id,
+            pointPosition: point.position,
+            pointCategory: point.category,
+            editableId: editablePoint.img_pos_id,
+            editablePosition: editablePoint.position,
+            editableCategory: editablePoint.category,
+            isMatch: isThisPointEditable
+          });
           
           return {
             ...point,
