@@ -1847,12 +1847,18 @@ return (
                           })(),
                           fontWeight: 600,
                           color: "black",
-                          padding: '3px', // Reduced padding for more compact look
+                          padding: 0, // Remove padding completely for precise centering
+                          margin: 0, // Remove any margin
                           boxSizing: 'border-box',
                           textAlign: 'center',
-                          lineHeight: '1', // Ensure consistent line height
-                          fontFamily: 'Arial, sans-serif', // Use consistent font
-                          letterSpacing: 'normal', // Reset any letter spacing
+                          lineHeight: '1', // Back to 1 for consistency
+                          fontFamily: 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif', // Better font stack
+                          letterSpacing: 'normal',
+                          // Additional centering properties
+                          overflow: 'hidden', // Ensure content stays within circle
+                          WebkitFontSmoothing: 'antialiased', // Smooth font rendering
+                          MozOsxFontSmoothing: 'grayscale',
+                          position: 'relative',
                           zIndex: 10,
                           cursor: isReadOnly || !isEditable
                             ? "default"
@@ -1880,7 +1886,15 @@ return (
                         onMouseDown={e => handlePointMouseDown(e, index)}
                         onClick={e => handlePointClick(e, index)}
                       >
-                        {point.position}
+                        <span style={{
+                          display: 'inline-block',
+                          textAlign: 'center',
+                          lineHeight: '1',
+                          transform: 'translateY(0px)', // Fine-tune vertical position if needed
+                          userSelect: 'none'
+                        }}>
+                          {point.position}
+                        </span>
                         {!editMode && !isReadOnly && (
                           <Box
                             onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
