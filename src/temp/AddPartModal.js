@@ -420,13 +420,9 @@ const AddPartModal = ({
 
       let allMarkupPointsForImage = [];
 
-      // Check if existingPartsData matches the current part using unique ID
-      if (existingPartsData &&
-        existingPartsData.id === currentPartId &&
-        existingPartsData.exists &&
-        existingPartsData.markupPoints) {
-
-        console.log("Loading markup points for edit mode with part ID:", currentPartId);
+      // Use existingPartsData if available, otherwise fallback to creating single point
+      if (existingPartsData && existingPartsData.exists && existingPartsData.markupPoints) {
+        console.log("Loading markup points from existingPartsData:", existingPartsData.markupPoints);
 
         // Get all markup points from the existing part data
         allMarkupPointsForImage = existingPartsData.markupPoints.map(point => ({
@@ -436,6 +432,15 @@ const AddPartModal = ({
           isReadOnly: true,
           isEditable: false
         }));
+      } else {
+        console.log("No existingPartsData available, creating single point from editData");
+        // Fallback: create the single point from editData
+        allMarkupPointsForImage = [{
+          ...editData.markupPoint,
+          partId: editData.partData.id,
+          isReadOnly: true,
+          isEditable: false
+        }];
       }
 
       const editablePoint = editData.markupPoint;
@@ -452,9 +457,18 @@ const AddPartModal = ({
       })));
 
       console.log("Edit mode initialized:", {
-        partId: currentPartId,
         editableImgPosId: editablePoint.img_pos_id,
-        totalPoints: allMarkupPointsForImage.length
+        totalPoints: allMarkupPointsForImage.length,
+        allPoints: allMarkupPointsForImage,
+        finalTempMarkupPoints: allMarkupPointsForImage.map(point => ({
+          ...point,
+          isEditable: point.img_pos_id === editablePoint.img_pos_id && 
+                     point.position === editablePoint.position && 
+                     point.category === editablePoint.category,
+          isReadOnly: !(point.img_pos_id === editablePoint.img_pos_id && 
+                       point.position === editablePoint.position && 
+                       point.category === editablePoint.category)
+        }))
       });
 
 
@@ -877,7 +891,16 @@ useEffect(() => {
       });
     }
   }
-}, [editMode, pointModal, editingPointIndex, tempMarkupPoints]);
+  }, [editMode, pointModal, editingPointIndex, tempMarkupPoints]);
+
+  // Debug effect to track tempMarkupPoints changes
+  useEffect(() => {
+    console.log("tempMarkupPoints changed:", {
+      length: tempMarkupPoints.length,
+      points: tempMarkupPoints,
+      editMode: editMode
+    });
+  }, [tempMarkupPoints, editMode]);
 
 
 return (
@@ -1326,6 +1349,7 @@ return (
                     }}
                     draggable={false}
                   />
+                  {console.log("Rendering tempMarkupPoints:", tempMarkupPoints, "editMode:", editMode)}
                   {tempMarkupPoints.map((point, index) => {
                     const isEditable = !editMode || point.isEditable;
                     const isReadOnly = point.isReadOnly;
