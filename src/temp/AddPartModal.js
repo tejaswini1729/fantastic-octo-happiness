@@ -1847,18 +1847,10 @@ return (
                           })(),
                           fontWeight: 600,
                           color: "black",
-                          padding: 0, // Remove padding completely for precise centering
-                          margin: 0, // Remove any margin
+                          padding: '3px',
                           boxSizing: 'border-box',
                           textAlign: 'center',
-                          lineHeight: '1', // Back to 1 for consistency
-                          fontFamily: 'system-ui, -apple-system, "Segoe UI", Arial, sans-serif', // Better font stack
-                          letterSpacing: 'normal',
-                          // Additional centering properties
-                          overflow: 'hidden', // Ensure content stays within circle
-                          WebkitFontSmoothing: 'antialiased', // Smooth font rendering
-                          MozOsxFontSmoothing: 'grayscale',
-                          position: 'relative',
+                          lineHeight: '1',
                           zIndex: 10,
                           cursor: isReadOnly || !isEditable
                             ? "default"
@@ -1886,15 +1878,7 @@ return (
                         onMouseDown={e => handlePointMouseDown(e, index)}
                         onClick={e => handlePointClick(e, index)}
                       >
-                        <span style={{
-                          display: 'inline-block',
-                          textAlign: 'center',
-                          lineHeight: '1',
-                          transform: 'translateY(0px)', // Fine-tune vertical position if needed
-                          userSelect: 'none'
-                        }}>
-                          {point.position}
-                        </span>
+                        {point.position}
                         {!editMode && !isReadOnly && (
                           <Box
                             onMouseDown={e => { e.stopPropagation(); e.preventDefault(); }}
