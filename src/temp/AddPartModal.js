@@ -496,13 +496,16 @@ const AddPartModal = ({
       editDataPosition: editData?.markupPoint?.position
     });
     
-    if (editMode && editData && open && !editModeInitialized) {
+    // CRITICAL: Re-run when editData changes, not just when modal opens
+    if (editMode && editData && open) {
       console.log("🔍 EDIT MODE DEBUG - Input Data:");
       console.log("editData:", editData);
+      console.log("editData.markupPoint.img_pos_id:", editData?.markupPoint?.img_pos_id);
+      console.log("editData.markupPoint.position:", editData?.markupPoint?.position);
       console.log("existingPartsData:", existingPartsData);
       console.log("existingPartsData.markupPoints:", existingPartsData?.markupPoints);
       
-      setEditModeInitialized(true); // Mark as initialized to prevent re-running
+      setEditModeInitialized(true); // Mark as initialized
       
       // Helper function to get key from label
       const getKey = (options, label) => {
@@ -711,7 +714,7 @@ const AddPartModal = ({
     } else if (!editMode) {
       resetData();
     }
-  }, [editMode, editData, open]); // Removed existingPartsData from dependencies to prevent re-running
+  }, [editMode, editData?.markupPoint?.img_pos_id, open]); // Re-run when editData point ID changes
 
   // Handle point drag for Add Part mode and editable points in Edit mode
   const handlePointMouseDown = (event, pointIndex) => {
