@@ -137,6 +137,7 @@ const AddPartModal = ({
   const [isDragging, setIsDragging] = useState(false);
   const [dragPointIndex, setDragPointIndex] = useState(null);
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
+  const [hasDragged, setHasDragged] = useState(false); // Track if user has dragged
 
 
 
@@ -501,6 +502,7 @@ const AddPartModal = ({
       event.stopPropagation();
       setIsDragging(true);
       setDragPointIndex(pointIndex);
+      setHasDragged(false); // Reset drag flag when starting drag
     }
   };
 
