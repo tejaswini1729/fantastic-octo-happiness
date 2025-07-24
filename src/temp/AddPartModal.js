@@ -469,16 +469,33 @@ const AddPartModal = ({
 
   // Reset edit mode initialization when editData changes (different row clicked)
   useEffect(() => {
+    console.log("🔄 EditData change detector triggered:", {
+      editMode,
+      editData: editData?.markupPoint?.img_pos_id,
+      editModeInitialized,
+      editModePointsSet
+    });
+    
     if (editMode && editData) {
       console.log("🔄 EditData changed - resetting initialization flag");
       console.log("🔄 New editData.markupPoint.img_pos_id:", editData.markupPoint?.img_pos_id);
+      console.log("🔄 New editData.markupPoint.position:", editData.markupPoint?.position);
       setEditModeInitialized(false); // Reset to allow re-initialization
       setEditModePointsSet(false); // Reset points flag
     }
-  }, [editData?.markupPoint?.img_pos_id]); // Reset when the specific point ID changes
+  }, [editData?.markupPoint?.img_pos_id, editData?.markupPoint?.position]); // Reset when the specific point changes
 
   // Initialize edit mode data
   useEffect(() => {
+    console.log("🔍 Edit mode useEffect triggered:", {
+      editMode,
+      editDataExists: !!editData,
+      open,
+      editModeInitialized,
+      editDataPointId: editData?.markupPoint?.img_pos_id,
+      editDataPosition: editData?.markupPoint?.position
+    });
+    
     if (editMode && editData && open && !editModeInitialized) {
       console.log("🔍 EDIT MODE DEBUG - Input Data:");
       console.log("editData:", editData);
