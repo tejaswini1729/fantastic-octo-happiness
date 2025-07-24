@@ -218,9 +218,10 @@ const AddPartModal = ({
     return null;
   };
 
-  // Get existing points for the current image configuration (for Add mode)
+  // Get existing points for the current image configuration (for Add mode AND Edit mode)
   const getExistingPointsForImage = () => {
-    if (editMode || !form.part || !form.model || !form.variant || !form.side || !existingPartsData || !existingPartsData.exists) {
+    if (!form.part || !form.model || !form.variant || !form.side || !existingPartsData || !existingPartsData.exists) {
+      console.log("getExistingPointsForImage: Missing required data for", { editMode, form: !!form.part, existingPartsData: !!existingPartsData });
       return [];
     }
 
@@ -244,6 +245,7 @@ const AddPartModal = ({
       existingPartsData.id; // Ensure we have a valid id
 
     if (match && existingPartsData.markupPoints) {
+      console.log("getExistingPointsForImage: ✅ Found matching part with points:", existingPartsData.markupPoints);
       // Extract all existing points and mark them as read-only
       // Include img_pos_id for unique identification of each markup point
       const existingPoints = existingPartsData.markupPoints.map(point => ({
@@ -253,8 +255,11 @@ const AddPartModal = ({
         isReadOnly: true,
         isEditable: false
       }));
+      console.log("getExistingPointsForImage: ✅ Returning points:", existingPoints);
       return existingPoints;
     }
+
+    console.log("getExistingPointsForImage: ❌ No matching part found or no markup points");
 
     return [];
   };
@@ -518,6 +523,44 @@ const AddPartModal = ({
         position: editData.markupPoint.position.toString(),
         category: editData.markupPoint.category,
       });
+
+      // CRITICAL: Load ALL markup points using the same method as ADD mode
+      // This ensures we get all points like in add mode, then mark one as editable
+      setTimeout(() => {
+        console.log("🔄 EDIT MODE: Loading all points using getExistingPointsForImage method...");
+        
+        // Use the SAME function that works in ADD mode to get existing points
+        const allExistingPoints = getExistingPointsForImage();
+        console.log("🔄 EDIT MODE: Got existing points:", allExistingPoints);
+        
+        // If we got points from the existing function, use them
+        if (allExistingPoints && allExistingPoints.length > 0) {
+          console.log("✅ EDIT MODE: Using existing points function result");
+          
+          const editablePoint = editData.markupPoint;
+          
+          // Mark only the selected point as editable
+          const finalPoints = allExistingPoints.map(point => {
+            const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id && 
+                                       point.position == editablePoint.position && 
+                                       point.category === editablePoint.category;
+            
+            return {
+              ...point,
+              isEditable: isThisPointEditable,
+              isReadOnly: !isThisPointEditable
+            };
+          });
+          
+          console.log("✅ EDIT MODE: Setting final points with getExistingPointsForImage:", finalPoints);
+          setTempMarkupPoints(finalPoints);
+        } else {
+          console.log("❌ EDIT MODE: No points from getExistingPointsForImage, using fallback");
+          // Fallback to the original method if getExistingPointsForImage doesn't work
+          // This is the code we had before
+          setTempMarkupPoints(finalPoints);
+        }
+      }, 150); // Slight delay to ensure form is fully set
     } else if (!editMode) {
       resetData();
     }
