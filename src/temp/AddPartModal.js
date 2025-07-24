@@ -139,6 +139,7 @@ const AddPartModal = ({
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
   const [dragStarted, setDragStarted] = useState(false); // Track if drag actually occurred
   const [mouseDownPosition, setMouseDownPosition] = useState({ x: 0, y: 0 }); // Track initial mouse position
+  const [editModeInitialized, setEditModeInitialized] = useState(false); // Track if edit mode was already initialized
   const [hasDragged, setHasDragged] = useState(false); // Track if user has dragged
 
 
@@ -326,6 +327,7 @@ const AddPartModal = ({
     setHasVisitedStep2(false);
     setEditingPointIndex(null);
     setIsManuallyUploaded(false);
+    setEditModeInitialized(false); // Reset edit mode initialization flag
   };
 
   // Debug: Log when modal opens and existingPartsData changes
@@ -339,9 +341,10 @@ const AddPartModal = ({
   }, [open, editMode, existingPartsData]);
 
   // Auto-load image when configuration matches existing part
+  // This should ONLY run in ADD mode, not EDIT mode
   useEffect(() => {
     if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded && existingPartsData && existingPartsData.exists) {
-      console.log("Checking for existing image data...", {
+      console.log("Auto-load: Checking for existing image data...", {
         part: form.part,
         model: form.model,
         variant: form.variant,
@@ -351,10 +354,10 @@ const AddPartModal = ({
       });
 
       const existingImageData = getExistingImageData();
-      console.log("Found existing image data:", existingImageData);
+      console.log("Auto-load: Found existing image data:", existingImageData);
 
       if (existingImageData) {
-        console.log("Auto-loading image for part ID:", existingImageData.partId);
+        console.log("Auto-load: Auto-loading image for part ID:", existingImageData.partId);
         // Auto-load the existing image with proper file data
         handleChange("image", {
           name: existingImageData.imageName,
@@ -365,19 +368,20 @@ const AddPartModal = ({
         handleChange("imageUrl", existingImageData.imageUrl);
         setProgress(100);
 
-        // Load existing points after image is set
+        // Load existing points after image is set - ONLY IN ADD MODE
         setTimeout(() => {
           const existingPoints = getExistingPointsForImage();
-          console.log("Loading existing points with img_pos_id:", existingPoints);
+          console.log("Auto-load: Loading existing points with img_pos_id:", existingPoints);
           setTempMarkupPoints(existingPoints);
         }, 100);
       } else {
-        console.log("No existing image data found");
+        console.log("Auto-load: No existing image data found");
       }
     }
   }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData]);
 
   // Update temp markup points when form changes (to include existing points for the image)
+  // BUT NOT IN EDIT MODE - edit mode handles its own point loading
   useEffect(() => {
     if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && existingPartsData.exists) {
       const existingPoints = getExistingPointsForImage();
@@ -396,7 +400,14 @@ const AddPartModal = ({
 
   // Initialize edit mode data
   useEffect(() => {
-    if (editMode && editData && open) {
+    if (editMode && editData && open && !editModeInitialized) {
+      console.log("🔍 EDIT MODE DEBUG - Input Data:");
+      console.log("editData:", editData);
+      console.log("existingPartsData:", existingPartsData);
+      console.log("existingPartsData.markupPoints:", existingPartsData?.markupPoints);
+      
+      setEditModeInitialized(true); // Mark as initialized to prevent re-running
+      
       // Helper function to get key from label
       const getKey = (options, label) => {
         const option = options.find(opt => opt.label === label);
@@ -510,7 +521,7 @@ const AddPartModal = ({
     } else if (!editMode) {
       resetData();
     }
-  }, [editMode, editData, open, existingPartsData]);
+  }, [editMode, editData, open]); // Removed existingPartsData from dependencies to prevent re-running
 
   // Handle point drag for Add Part mode and editable points in Edit mode
   const handlePointMouseDown = (event, pointIndex) => {
@@ -1072,10 +1083,17 @@ useEffect(() => {
 
   // Debug effect to track tempMarkupPoints changes
   useEffect(() => {
-    console.log("tempMarkupPoints changed:", {
+    console.log("🔄 tempMarkupPoints CHANGED:", {
       length: tempMarkupPoints.length,
       points: tempMarkupPoints,
-      editMode: editMode
+      editMode: editMode,
+      pointDetails: tempMarkupPoints.map(p => ({
+        position: p.position,
+        category: p.category,
+        isEditable: p.isEditable,
+        isReadOnly: p.isReadOnly,
+        img_pos_id: p.img_pos_id
+      }))
     });
   }, [tempMarkupPoints, editMode]);
 
@@ -1531,7 +1549,12 @@ return (
                     }}
                     draggable={false}
                   />
-                  {console.log("Rendering tempMarkupPoints:", tempMarkupPoints, "editMode:", editMode)}
+                  {console.log("🎨 RENDERING tempMarkupPoints:", tempMarkupPoints, "Length:", tempMarkupPoints.length, "editMode:", editMode)}
+                  {tempMarkupPoints.length === 0 && (
+                    <div style={{position: 'absolute', top: '10px', left: '10px', background: 'red', color: 'white', padding: '5px', zIndex: 1000}}>
+                      NO POINTS TO RENDER!
+                    </div>
+                  )}
                   {tempMarkupPoints.map((point, index) => {
                     const isEditable = !editMode || point.isEditable;
                     const isReadOnly = point.isReadOnly;
