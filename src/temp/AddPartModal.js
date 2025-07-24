@@ -110,6 +110,9 @@ const AddPartModal = ({
   console.log("🚀 open:", open);
   console.log("🚀 editMode:", editMode);
   console.log("🚀 editData:", editData);
+  console.log("🚀 editData?.markupPoint:", editData?.markupPoint);
+  console.log("🚀 editData?.markupPoint?.img_pos_id:", editData?.markupPoint?.img_pos_id);
+  console.log("🚀 editData?.markupPoint?.position:", editData?.markupPoint?.position);
   console.log("🚀 existingPartsData:", existingPartsData);
   console.log("🚀 existingPartsData?.markupPoints:", existingPartsData?.markupPoints);
   console.log("🚀 existingPartsData?.markupPoints?.length:", existingPartsData?.markupPoints?.length);
