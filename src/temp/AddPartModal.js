@@ -1851,6 +1851,7 @@ return (
                           boxSizing: 'border-box',
                           textAlign: 'center',
                           lineHeight: '1',
+                          fontFamily: 'Arial, sans-serif', // Add consistent font
                           zIndex: 10,
                           cursor: isReadOnly || !isEditable
                             ? "default"
