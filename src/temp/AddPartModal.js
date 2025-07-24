@@ -1537,9 +1537,8 @@ return (
                           })(),
                           fontWeight: 600,
                           color: "black",
-                          padding: '8px', // Increased padding for better visual separation
+                          padding: '3px', // Reduced padding for more compact look
                           boxSizing: 'border-box',
-                          // Add temporary border to visualize padding (remove this later)
                           textAlign: 'center',
                           lineHeight: '1',
                           zIndex: 10,
