@@ -356,8 +356,16 @@ const AddPartModal = ({
   // Auto-load image when configuration matches existing part
   // This should ONLY run in ADD mode, not EDIT mode
   useEffect(() => {
+    console.log("🔄 Auto-load useEffect triggered:", {
+      editMode,
+      formComplete: !!(form.part && form.model && form.variant && form.side),
+      hasImageUrl: !!form.imageUrl,
+      isManuallyUploaded,
+      hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
+    });
+    
     if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded && existingPartsData && existingPartsData.exists) {
-      console.log("Auto-load: Checking for existing image data...", {
+      console.log("Auto-load: ✅ All conditions met, proceeding with auto-load...", {
         part: form.part,
         model: form.model,
         variant: form.variant,
@@ -396,18 +404,28 @@ const AddPartModal = ({
   // Update temp markup points when form changes (to include existing points for the image)
   // BUT NOT IN EDIT MODE - edit mode handles its own point loading
   useEffect(() => {
+    console.log("🔄 Form change useEffect triggered:", {
+      editMode,
+      formComplete: !!(form.part && form.model && form.variant && form.side),
+      hasImageUrl: !!form.imageUrl,
+      hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
+    });
+    
     if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && existingPartsData.exists) {
+      console.log("Form change: ✅ All conditions met for merging points...");
       const existingPoints = getExistingPointsForImage();
       // Keep only the new points (non-read-only) and merge with existing points
       const newPoints = tempMarkupPoints.filter(point => !point.isReadOnly);
 
-      console.log("Merging points:", {
+      console.log("Form change: Merging points:", {
         existingPoints: existingPoints.length,
         newPoints: newPoints.length,
         partId: existingPartsData.id
       });
 
       setTempMarkupPoints([...existingPoints, ...newPoints]);
+    } else {
+      console.log("Form change: ❌ Conditions not met or in edit mode, skipping merge");
     }
   }, [form.imageUrl]); // Only trigger when imageUrl changes
 
@@ -552,8 +570,10 @@ const AddPartModal = ({
           console.log("✅ EDIT MODE: existingPartsData.markupPoints exists with length:", existingPartsData.markupPoints.length);
           console.log("✅ EDIT MODE: All points in existingPartsData:", existingPartsData.markupPoints);
           
-          if (existingPartsData.markupPoints.length > 1) {
-            // More than just the edited point - proceed with all points
+          if (existingPartsData.markupPoints.length > 0) {
+            // We have markup points - use them all
+            console.log("✅ EDIT MODE: Processing", existingPartsData.markupPoints.length, "markup points");
+            
             const allExistingPoints = existingPartsData.markupPoints.map(point => ({
               ...point,
               partId: existingPartsData.id,
@@ -564,12 +584,19 @@ const AddPartModal = ({
             
             const editablePoint = editData.markupPoint;
             console.log("🎯 EDIT MODE: Editable point to match:", editablePoint);
+            console.log("🎯 EDIT MODE: Looking for img_pos_id:", editablePoint.img_pos_id);
             
             // Mark only the selected point as editable
             const finalPoints = allExistingPoints.map(point => {
-              const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id && 
-                                         point.position == editablePoint.position && 
-                                         point.category === editablePoint.category;
+              const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id;
+              
+              console.log("🔍 Checking point:", {
+                pointId: point.img_pos_id,
+                editableId: editablePoint.img_pos_id,
+                isMatch: isThisPointEditable,
+                pointPosition: point.position,
+                editablePosition: editablePoint.position
+              });
               
               return {
                 ...point,
@@ -586,28 +613,18 @@ const AddPartModal = ({
             });
             
             setTempMarkupPoints(finalPoints);
-          } else if (existingPartsData.markupPoints.length === 1) {
-            console.log("⚠️ EDIT MODE: Only 1 point in existingPartsData.markupPoints - this might be just the edited point");
-            console.log("⚠️ EDIT MODE: Need to get other points from somewhere else");
             
-            // Check if there are other points in dropdownData or other sources
-            console.log("🔍 EDIT MODE: Checking dropdownData for more points:", dropdownData);
+            // Verify what was actually set
+            setTimeout(() => {
+              console.log("🔄 VERIFICATION: tempMarkupPoints after setting:", finalPoints);
+            }, 100);
             
-            // For now, just use the single point
-            const singlePoint = {
-              ...existingPartsData.markupPoints[0],
-              partId: existingPartsData.id,
-              isReadOnly: false,
-              isEditable: true
-            };
-            console.log("⚠️ EDIT MODE: Using single point:", singlePoint);
-            setTempMarkupPoints([singlePoint]);
           } else {
             console.log("❌ EDIT MODE: existingPartsData.markupPoints is empty array");
             // Create single point from editData
             const singlePoint = {
               ...editData.markupPoint,
-              partId: editData.partData.id,
+              partId: editData.partData?.id || 'unknown',
               isReadOnly: false,
               isEditable: true
             };
