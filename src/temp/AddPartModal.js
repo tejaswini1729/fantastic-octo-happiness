@@ -561,14 +561,18 @@ const AddPartModal = ({
       position: point.position,
       category: point.category,
       positionString: point.position.toString(),
-      availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label }))
+      availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label })),
+      availablePositionOptions: positionOptions[point.category] || []
     });
 
     // Ensure the category matches one of the available options
     const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
+    
+    // Ensure the position matches one of the available options for this category
+    const positionKey = point.position.toString();
 
     setPointData({
-      position: point.position.toString(),
+      position: positionKey,
       category: categoryKey,
     });
     setCurrentPoint({ x: point.x, y: point.y });
@@ -658,14 +662,29 @@ function mapDataRecord() {
     imageSize: form.image?.size || null,
     markupPoints: tempMarkupPoints
       .filter(point => !point.isReadOnly && (!editMode || point.isEditable)) // Include only new points or editable points
-      .map((point) => ({
-        x: point.x,
-        y: point.y,
-        position: point.position,
-        category: point.category,
-        // Don't include isEditable, isReadOnly in the final data
-      })),
+      .map((point) => {
+        const basePoint = {
+          x: point.x,
+          y: point.y,
+          position: point.position,
+          category: point.category,
+        };
+
+        // In edit mode, if this point was the one being edited (isEditable), add method: "UPDATE"
+        if (editMode && point.isEditable) {
+          basePoint.method = "UPDATE";
+        }
+
+        return basePoint;
+      }),
   };
+
+  console.log("mapDataRecord result:", {
+    editMode: editMode,
+    filteredPoints: tempMarkupPoints.filter(point => !point.isReadOnly && (!editMode || point.isEditable)),
+    finalData: data
+  });
+
   return data;
 }
 
@@ -926,14 +945,18 @@ useEffect(() => {
         position: point.position,
         category: point.category,
         img_pos_id: point.img_pos_id,
-        availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label }))
+        availableCategoryOptions: categoryOptions.map(opt => ({ key: opt.key, label: opt.label })),
+        availablePositionOptions: positionOptions[point.category] || []
       });
 
       // Ensure the category matches one of the available options
       const categoryKey = categoryOptions.find(opt => opt.label === point.category)?.key || point.category;
+      
+      // Ensure the position matches one of the available options for this category
+      const positionKey = point.position.toString();
 
       setPointData({
-        position: point.position.toString(),
+        position: positionKey,
         category: categoryKey,
       });
     }
