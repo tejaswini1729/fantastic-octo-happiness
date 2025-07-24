@@ -467,6 +467,16 @@ const AddPartModal = ({
     }
   }, [form.imageUrl, editModePointsSet]); // Added editModePointsSet to dependencies
 
+  // Reset edit mode initialization when editData changes (different row clicked)
+  useEffect(() => {
+    if (editMode && editData) {
+      console.log("🔄 EditData changed - resetting initialization flag");
+      console.log("🔄 New editData.markupPoint.img_pos_id:", editData.markupPoint?.img_pos_id);
+      setEditModeInitialized(false); // Reset to allow re-initialization
+      setEditModePointsSet(false); // Reset points flag
+    }
+  }, [editData?.markupPoint?.img_pos_id]); // Reset when the specific point ID changes
+
   // Initialize edit mode data
   useEffect(() => {
     if (editMode && editData && open && !editModeInitialized) {
