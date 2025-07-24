@@ -348,14 +348,20 @@ const AddPartModal = ({
   };
 
   const resetData = () => {
-    console.log("🔄 resetData called in:", { editMode, editModePointsSet });
+    console.log("🔄 resetData called in:", { editMode, editModePointsSet, currentStep: step });
     
-    // Don't reset in edit mode if points have been set
-    if (editMode && editModePointsSet) {
-      console.log("🚨 resetData: Skipping reset because edit mode points are set");
+    if (editMode) {
+      console.log("🔧 Edit mode reset - only resetting step to 2, preserving other data");
+      // In edit mode, only reset the step to ensure it starts from step 2
+      // Don't reset form data, points, or other edit mode specific data
+      setStep(2);
+      setHasVisitedStep2(true);
+      setEditingPointIndex(null); // Reset editing point index
       return;
     }
     
+    // Full reset for add mode
+    console.log("🔧 Add mode reset - full reset");
     setForm(initialFormData);
     setTempMarkupPoints(initial_tm_Data);
     setStep(1);
@@ -569,7 +575,9 @@ const AddPartModal = ({
       });
 
 
-      setStep(2); // Start from step 2 in edit mode
+      // CRITICAL: ALWAYS set step 2 for edit mode - regardless of previous state
+      console.log("🔧 Edit mode initialization - forcing step to 2 (was:", step, ")");
+      setStep(2); // Always start from step 2 in edit mode
       setHasVisitedStep2(true);
       setProgress(100);
 
@@ -1257,6 +1265,16 @@ useEffect(() => {
     if (open) {
       console.log("🔄 Modal opened - categoryOptions:", categoryOptions);
       console.log("🔄 Modal opened - pointData:", pointData);
+      
+      // CRITICAL: Ensure edit mode ALWAYS starts from step 2
+      if (editMode) {
+        console.log("🔄 Edit mode detected - ensuring step 2:", { currentStep: step, editMode });
+        if (step !== 2) {
+          console.log("🔄 Setting step to 2 for edit mode");
+          setStep(2);
+          setHasVisitedStep2(true);
+        }
+      }
       
       if (editMode && editData && editData.markupPoint) {
         console.log("🔄 Edit mode - ensuring pointData category is set:", editData.markupPoint.category);
