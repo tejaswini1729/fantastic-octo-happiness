@@ -138,6 +138,7 @@ const AddPartModal = ({
   const [dragPointIndex, setDragPointIndex] = useState(null);
   const [isManuallyUploaded, setIsManuallyUploaded] = useState(false);
   const [dragStarted, setDragStarted] = useState(false); // Track if drag actually occurred
+  const [mouseDownPosition, setMouseDownPosition] = useState({ x: 0, y: 0 }); // Track initial mouse position
   const [hasDragged, setHasDragged] = useState(false); // Track if user has dragged
 
 
@@ -422,20 +423,29 @@ const AddPartModal = ({
 
       let allMarkupPointsForImage = [];
 
-      // Use existingPartsData if available, otherwise fallback to creating single point
-      if (existingPartsData && existingPartsData.exists && existingPartsData.markupPoints) {
-        console.log("Loading markup points from existingPartsData:", existingPartsData.markupPoints);
+      console.log("Edit mode - existingPartsData check:", {
+        existingPartsData: existingPartsData,
+        exists: existingPartsData?.exists,
+        markupPointsLength: existingPartsData?.markupPoints?.length,
+        markupPoints: existingPartsData?.markupPoints
+      });
 
-        // Get all markup points from the existing part data
+      // ALWAYS use existingPartsData if available - it should contain ALL points for this image
+      if (existingPartsData && existingPartsData.exists && existingPartsData.markupPoints && existingPartsData.markupPoints.length > 0) {
+        console.log("✅ Loading ALL markup points from existingPartsData:", existingPartsData.markupPoints);
+
+        // Get ALL markup points from the existing part data
         allMarkupPointsForImage = existingPartsData.markupPoints.map(point => ({
           ...point,
           partId: existingPartsData.id, // Include parent part ID
           img_pos_id: point.img_pos_id, // Preserve unique markup point ID
-          isReadOnly: true,
-          isEditable: false
+          isReadOnly: true, // Mark all as read-only initially
+          isEditable: false // Mark all as non-editable initially
         }));
+        
+        console.log("✅ Mapped all points:", allMarkupPointsForImage);
       } else {
-        console.log("No existingPartsData available, creating single point from editData");
+        console.log("❌ No existingPartsData available or empty, creating single point from editData");
         // Fallback: create the single point from editData
         allMarkupPointsForImage = [{
           ...editData.markupPoint,
@@ -443,20 +453,34 @@ const AddPartModal = ({
           isReadOnly: true,
           isEditable: false
         }];
+        
+        console.log("❌ Fallback single point:", allMarkupPointsForImage);
       }
 
       const editablePoint = editData.markupPoint;
+      console.log("🎯 Editable point to match:", editablePoint);
 
       // Mark only the selected point as editable using img_pos_id for precise matching
-      setTempMarkupPoints(allMarkupPointsForImage.map(point => ({
-        ...point,
-        isEditable: point.img_pos_id === editablePoint.img_pos_id &&
-          point.position === editablePoint.position &&
-          point.category === editablePoint.category,
-        isReadOnly: !(point.img_pos_id === editablePoint.img_pos_id &&
-          point.position === editablePoint.position &&
-          point.category === editablePoint.category)
-      })));
+      const finalPoints = allMarkupPointsForImage.map(point => {
+        const isThisPointEditable = point.img_pos_id === editablePoint.img_pos_id && 
+                                   point.position == editablePoint.position && 
+                                   point.category === editablePoint.category;
+        
+        return {
+          ...point,
+          isEditable: isThisPointEditable,
+          isReadOnly: !isThisPointEditable
+        };
+      });
+
+      console.log("🚀 Final points being set to tempMarkupPoints:", finalPoints);
+      console.log("📊 Final counts:", {
+        total: finalPoints.length,
+        editable: finalPoints.filter(p => p.isEditable).length,
+        readOnly: finalPoints.filter(p => p.isReadOnly).length
+      });
+
+      setTempMarkupPoints(finalPoints);
 
       console.log("Edit mode initialized:", {
         editableImgPosId: editablePoint.img_pos_id,
@@ -501,6 +525,10 @@ const AddPartModal = ({
     if (!editMode || (editMode && point.isEditable)) {
       event.preventDefault();
       event.stopPropagation();
+      
+      // Record initial mouse position to calculate movement threshold
+      setMouseDownPosition({ x: event.clientX, y: event.clientY });
+      
       setIsDragging(true);
       setDragPointIndex(pointIndex);
       setDragStarted(false); // Reset drag flag when starting drag
@@ -518,31 +546,40 @@ const AddPartModal = ({
 
     event.preventDefault();
     
-    // Mark that dragging actually occurred (any mouse movement during drag)
-    if (!dragStarted) {
+    // Calculate movement distance from initial mouse down position
+    const deltaX = Math.abs(event.clientX - mouseDownPosition.x);
+    const deltaY = Math.abs(event.clientY - mouseDownPosition.y);
+    const movementDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+    
+    // Only mark as dragged if mouse moved more than 5 pixels (threshold to distinguish from click)
+    if (movementDistance > 5 && !dragStarted) {
       setDragStarted(true);
+      console.log("Drag threshold exceeded - marking as drag operation");
     }
     
-    const img = imageRef.current;
-    const rect = img.getBoundingClientRect();
+    // Only update position if we've moved beyond the threshold
+    if (movementDistance > 5) {
+      const img = imageRef.current;
+      const rect = img.getBoundingClientRect();
 
-    const x = event.clientX - rect.left;
-    const y = event.clientY - rect.top;
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
 
-    const xPercent = (x / rect.width) * 100;
-    const yPercent = (y / rect.height) * 100;
+      const xPercent = (x / rect.width) * 100;
+      const yPercent = (y / rect.height) * 100;
 
-    const clampedX = Math.max(0, Math.min(100, xPercent));
-    const clampedY = Math.max(0, Math.min(100, yPercent));
+      const clampedX = Math.max(0, Math.min(100, xPercent));
+      const clampedY = Math.max(0, Math.min(100, yPercent));
 
-    // Update the point position while dragging, preserving isEditable property
-    setTempMarkupPoints((prev) =>
-      prev.map((point, index) =>
-        index === dragPointIndex
-          ? { ...point, x: clampedX, y: clampedY }
-          : point
-      )
-    );
+      // Update the point position while dragging, preserving isEditable property
+      setTempMarkupPoints((prev) =>
+        prev.map((point, index) =>
+          index === dragPointIndex
+            ? { ...point, x: clampedX, y: clampedY }
+            : point
+        )
+      );
+    }
   };
 
   const handleMouseUp = () => {
@@ -567,10 +604,12 @@ const AddPartModal = ({
     
     // Don't open modal if dragging just occurred
     if (dragStarted) {
-      console.log("Drag detected, not opening modal");
+      console.log("🚫 Drag detected (dragStarted=true), not opening modal");
       setDragStarted(false); // Reset for next interaction
       return;
     }
+
+    console.log("✅ Pure click detected (no drag), opening modal for point:", point.position);
 
     event.stopPropagation();
 
