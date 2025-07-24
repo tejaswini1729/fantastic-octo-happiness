@@ -584,9 +584,16 @@ const AddPartModal = ({
       availableKeys: availablePositions.map(opt => opt.key)
     });
 
+    // If position doesn't exist in available options, we still set it to show the current value
+    // This ensures the dropdown shows the actual position even if it's not in the predefined list
     setPointData({
       position: positionKey,
       category: categoryKey,
+    });
+
+    console.log("Final pointData set:", {
+      position: positionKey,
+      category: categoryKey
     });
     setCurrentPoint({ x: point.x, y: point.y });
 
@@ -1493,19 +1500,28 @@ return (
                           position: "absolute",
                           left: `calc(${point.x}% - ${(() => {
                             const digitLength = point.position.toString().length;
-                            return digitLength === 1 ? '10px' : digitLength === 2 ? '12px' : '14px';
+                            console.log("Circle sizing - Position:", point.position, "DigitLength:", digitLength);
+                            if (digitLength === 1) return '14px';  // half of 28px
+                            if (digitLength === 2) return '17px';  // half of 34px
+                            return '20px'; // half of 40px for 3+ digits
                           })()})`,
                           top: `calc(${point.y}% - ${(() => {
                             const digitLength = point.position.toString().length;
-                            return digitLength === 1 ? '10px' : digitLength === 2 ? '12px' : '14px';
+                            if (digitLength === 1) return '14px';  // half of 28px
+                            if (digitLength === 2) return '17px';  // half of 34px
+                            return '20px'; // half of 40px for 3+ digits
                           })()})`,
-                          width: (() => {
+                          minWidth: (() => {
                             const digitLength = point.position.toString().length;
-                            return digitLength === 1 ? 20 : digitLength === 2 ? 24 : 28;
+                            if (digitLength === 1) return '28px';  // More space for 1 digit
+                            if (digitLength === 2) return '34px';  // More space for 2 digits
+                            return '40px'; // More space for 3+ digits
                           })(),
-                          height: (() => {
+                          minHeight: (() => {
                             const digitLength = point.position.toString().length;
-                            return digitLength === 1 ? 20 : digitLength === 2 ? 24 : 28;
+                            if (digitLength === 1) return '28px';
+                            if (digitLength === 2) return '34px';
+                            return '40px'; // 3+ digits
                           })(),
                           backgroundColor: backgroundColor,
                           border: borderColor,
@@ -1515,10 +1531,17 @@ return (
                           justifyContent: "center",
                           fontSize: (() => {
                             const digitLength = point.position.toString().length;
-                            return digitLength === 1 ? 11 : digitLength === 2 ? 12 : 10;
+                            if (digitLength === 1) return '13px';
+                            if (digitLength === 2) return '12px';
+                            return '11px'; // 3+ digits
                           })(),
-                          fontWeight: 500,
+                          fontWeight: 600,
                           color: "black",
+                          padding: '8px', // Increased padding for better visual separation
+                          boxSizing: 'border-box',
+                          // Add temporary border to visualize padding (remove this later)
+                          textAlign: 'center',
+                          lineHeight: '1',
                           zIndex: 10,
                           cursor: isReadOnly || !isEditable
                             ? "default"
@@ -1866,23 +1889,33 @@ return (
               disabled={editMode || !pointData.category} // Disable in edit mode or when category not selected
             >
               {/* In edit mode or when editing existing point, include the current position even if it would normally be filtered out */}
-              {(editMode || editingPointIndex !== null
-                ? (positionOptions[pointData.category] || [])
-                : getAvailablePositions(pointData.category)
-              ).length === 0 && pointData.category ? (
-                <MenuItem disabled value="">
-                  No available positions for this configuration
-                </MenuItem>
-              ) : (
-                (editMode || editingPointIndex !== null
-                  ? (positionOptions[pointData.category] || [])
-                  : getAvailablePositions(pointData.category)
-                ).map((option) => (
+              {/* In edit mode or when editing existing point, include the current position even if it would normally be filtered out */}
+              {(() => {
+                let availableOptions;
+                if (editMode || editingPointIndex !== null) {
+                  availableOptions = positionOptions[pointData.category] || [];
+                  // In edit mode, ensure the current position is included even if not in predefined options
+                  if (editMode && pointData.position && !availableOptions.some(opt => opt.key === pointData.position)) {
+                    availableOptions = [...availableOptions, { key: pointData.position, label: pointData.position }];
+                  }
+                } else {
+                  availableOptions = getAvailablePositions(pointData.category);
+                }
+
+                if (availableOptions.length === 0 && pointData.category) {
+                  return (
+                    <MenuItem disabled value="">
+                      No available positions for this configuration
+                    </MenuItem>
+                  );
+                }
+
+                return availableOptions.map((option) => (
                   <MenuItem key={option.key} value={option.key}>
                     {option.label}
                   </MenuItem>
-                ))
-              )}
+                ));
+              })()}
             </Select>
           </FormControl>
         </Box>
