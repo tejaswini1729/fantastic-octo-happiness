@@ -524,20 +524,26 @@ const AddPartModal = ({
         category: editData.markupPoint.category,
       });
 
-      // CRITICAL: Load ALL markup points using the same method as ADD mode
-      // This ensures we get all points like in add mode, then mark one as editable
+      // CRITICAL: Load ALL markup points directly from existingPartsData
+      // Since we know existingPartsData contains all points for this image
       setTimeout(() => {
-        console.log("🔄 EDIT MODE: Loading all points using getExistingPointsForImage method...");
+        console.log("🔄 EDIT MODE: Loading all points directly from existingPartsData...");
+        console.log("🔄 EDIT MODE: existingPartsData.markupPoints:", existingPartsData?.markupPoints);
         
-        // Use the SAME function that works in ADD mode to get existing points
-        const allExistingPoints = getExistingPointsForImage();
-        console.log("🔄 EDIT MODE: Got existing points:", allExistingPoints);
-        
-        // If we got points from the existing function, use them
-        if (allExistingPoints && allExistingPoints.length > 0) {
-          console.log("✅ EDIT MODE: Using existing points function result");
+        if (existingPartsData && existingPartsData.markupPoints && existingPartsData.markupPoints.length > 0) {
+          console.log("✅ EDIT MODE: Found points in existingPartsData:", existingPartsData.markupPoints);
+          
+          // Get ALL points directly from existingPartsData and mark as read-only
+          const allExistingPoints = existingPartsData.markupPoints.map(point => ({
+            ...point,
+            partId: existingPartsData.id,
+            img_pos_id: point.img_pos_id,
+            isReadOnly: true,
+            isEditable: false
+          }));
           
           const editablePoint = editData.markupPoint;
+          console.log("🎯 EDIT MODE: Editable point to match:", editablePoint);
           
           // Mark only the selected point as editable
           const finalPoints = allExistingPoints.map(point => {
@@ -552,13 +558,24 @@ const AddPartModal = ({
             };
           });
           
-          console.log("✅ EDIT MODE: Setting final points with getExistingPointsForImage:", finalPoints);
+          console.log("✅ EDIT MODE: Setting final points directly:", finalPoints);
+          console.log("📊 EDIT MODE: Final counts:", {
+            total: finalPoints.length,
+            editable: finalPoints.filter(p => p.isEditable).length,
+            readOnly: finalPoints.filter(p => p.isReadOnly).length
+          });
+          
           setTempMarkupPoints(finalPoints);
         } else {
-          console.log("❌ EDIT MODE: No points from getExistingPointsForImage, using fallback");
-          // Fallback to the original method if getExistingPointsForImage doesn't work
-          // This is the code we had before
-          setTempMarkupPoints(finalPoints);
+          console.log("❌ EDIT MODE: No points found in existingPartsData");
+          // Fallback: create single point from editData
+          const singlePoint = {
+            ...editData.markupPoint,
+            partId: editData.partData.id,
+            isReadOnly: false,
+            isEditable: true
+          };
+          setTempMarkupPoints([singlePoint]);
         }
       }, 150); // Slight delay to ensure form is fully set
     } else if (!editMode) {
@@ -1124,7 +1141,23 @@ useEffect(() => {
   }
   }, [editMode, pointModal, editingPointIndex, tempMarkupPoints]);
 
-  // Debug effect to track tempMarkupPoints changes
+  // Ensure category options are loaded and pointData is set correctly when modal opens
+  useEffect(() => {
+    if (open) {
+      console.log("🔄 Modal opened - categoryOptions:", categoryOptions);
+      console.log("🔄 Modal opened - pointData:", pointData);
+      
+      if (editMode && editData && editData.markupPoint) {
+        console.log("🔄 Edit mode - ensuring pointData category is set:", editData.markupPoint.category);
+        // Ensure pointData has the category set for the dropdown
+        setPointData(prevData => ({
+          ...prevData,
+          category: editData.markupPoint.category,
+          position: editData.markupPoint.position.toString()
+        }));
+      }
+    }
+  }, [open, editMode, editData]);
   useEffect(() => {
     console.log("🔄 tempMarkupPoints CHANGED:", {
       length: tempMarkupPoints.length,
@@ -2036,6 +2069,7 @@ return (
                   availableOptions = positionOptions[pointData.category] || [];
                   // In edit mode, ensure the current position is included even if not in predefined options
                   if (editMode && pointData.position && !availableOptions.some(opt => opt.key === pointData.position)) {
+                    console.log("🔧 Adding current position to dropdown:", pointData.position);
                     availableOptions = [...availableOptions, { key: pointData.position, label: pointData.position }];
                   }
                 } else {
