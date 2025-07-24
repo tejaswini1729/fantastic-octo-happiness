@@ -148,6 +148,7 @@ const AddPartModal = ({
   const [dragStarted, setDragStarted] = useState(false); // Track if drag actually occurred
   const [mouseDownPosition, setMouseDownPosition] = useState({ x: 0, y: 0 }); // Track initial mouse position
   const [editModeInitialized, setEditModeInitialized] = useState(false); // Track if edit mode was already initialized
+  const [editModePointsSet, setEditModePointsSet] = useState(false); // Track if edit mode points were set
   const [hasDragged, setHasDragged] = useState(false); // Track if user has dragged
 
 
@@ -341,6 +342,7 @@ const AddPartModal = ({
     setEditingPointIndex(null);
     setIsManuallyUploaded(false);
     setEditModeInitialized(false); // Reset edit mode initialization flag
+    setEditModePointsSet(false); // Reset edit mode points flag
   };
 
   // Debug: Log when modal opens and existingPartsData changes
@@ -358,13 +360,15 @@ const AddPartModal = ({
   useEffect(() => {
     console.log("🔄 Auto-load useEffect triggered:", {
       editMode,
+      editModePointsSet,
       formComplete: !!(form.part && form.model && form.variant && form.side),
       hasImageUrl: !!form.imageUrl,
       isManuallyUploaded,
       hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
     });
     
-    if (!editMode && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded && existingPartsData && existingPartsData.exists) {
+    // CRITICAL: Don't run this in edit mode OR if edit mode points have been set
+    if (!editMode && !editModePointsSet && form.part && form.model && form.variant && form.side && !form.imageUrl && !isManuallyUploaded && existingPartsData && existingPartsData.exists) {
       console.log("Auto-load: ✅ All conditions met, proceeding with auto-load...", {
         part: form.part,
         model: form.model,
@@ -398,20 +402,24 @@ const AddPartModal = ({
       } else {
         console.log("Auto-load: No existing image data found");
       }
+    } else {
+      console.log("Auto-load: ❌ Conditions not met, in edit mode, or edit mode points already set - skipping auto-load");
     }
-  }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData]);
+  }, [form.part, form.model, form.variant, form.side, editMode, existingPartsData, editModePointsSet]);
 
   // Update temp markup points when form changes (to include existing points for the image)
   // BUT NOT IN EDIT MODE - edit mode handles its own point loading
   useEffect(() => {
     console.log("🔄 Form change useEffect triggered:", {
       editMode,
+      editModePointsSet,
       formComplete: !!(form.part && form.model && form.variant && form.side),
       hasImageUrl: !!form.imageUrl,
       hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
     });
     
-    if (!editMode && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && existingPartsData.exists) {
+    // CRITICAL: Don't run this in edit mode OR if edit mode points have been set
+    if (!editMode && !editModePointsSet && form.part && form.model && form.variant && form.side && form.imageUrl && existingPartsData && existingPartsData.exists) {
       console.log("Form change: ✅ All conditions met for merging points...");
       const existingPoints = getExistingPointsForImage();
       // Keep only the new points (non-read-only) and merge with existing points
@@ -425,9 +433,9 @@ const AddPartModal = ({
 
       setTempMarkupPoints([...existingPoints, ...newPoints]);
     } else {
-      console.log("Form change: ❌ Conditions not met or in edit mode, skipping merge");
+      console.log("Form change: ❌ Conditions not met, in edit mode, or edit mode points already set - skipping merge");
     }
-  }, [form.imageUrl]); // Only trigger when imageUrl changes
+  }, [form.imageUrl, editModePointsSet]); // Added editModePointsSet to dependencies
 
   // Initialize edit mode data
   useEffect(() => {
@@ -613,6 +621,7 @@ const AddPartModal = ({
             });
             
             setTempMarkupPoints(finalPoints);
+            setEditModePointsSet(true); // Mark that edit mode points have been set
             
             // Verify what was actually set
             setTimeout(() => {
@@ -1231,6 +1240,7 @@ useEffect(() => {
       length: tempMarkupPoints.length,
       points: tempMarkupPoints,
       editMode: editMode,
+      editModePointsSet: editModePointsSet,
       pointDetails: tempMarkupPoints.map(p => ({
         position: p.position,
         category: p.category,
@@ -1239,7 +1249,13 @@ useEffect(() => {
         img_pos_id: p.img_pos_id
       }))
     });
-  }, [tempMarkupPoints, editMode]);
+    
+    // CRITICAL: If we're in edit mode and points were set, but now we only have 1 point, something overwrote it
+    if (editMode && editModePointsSet && tempMarkupPoints.length === 1) {
+      console.log("🚨 WARNING: Edit mode points were set but now only 1 point remains!");
+      console.log("🚨 This indicates another useEffect overwrote the points");
+    }
+  }, [tempMarkupPoints, editMode, editModePointsSet]);
 
   // Debug effect to track pointData changes
   useEffect(() => {
