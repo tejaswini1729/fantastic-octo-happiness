@@ -1115,66 +1115,64 @@ const handleImageClick = (event) => {
   event.stopPropagation();
 
   const img = imageRef.current;
-  const imgRect = img.getBoundingClientRect();
+  const container = containerRef.current;
+  const containerRect = container.getBoundingClientRect();
 
-  // Get click position relative to the actual image element
-  const clickX = event.clientX - imgRect.left;
-  const clickY = event.clientY - imgRect.top;
+  // Get click position relative to the container
+  const clickX = event.clientX - containerRect.left;
+  const clickY = event.clientY - containerRect.top;
 
-  // **ADD THIS SECTION - Calculate actual visible image dimensions and offset**
+  // **REPLACE THE EXISTING CALCULATION WITH THIS:**
+  // Account for zoom and pan transformations
+  // The image is centered in the container, so we need to find the center point first
+  const containerCenterX = containerRect.width / 2;
+  const containerCenterY = containerRect.height / 2;
+
+  // Calculate the click position relative to the image center, accounting for pan
+  const relativeToCenterX = (clickX - containerCenterX - imagePosition.x) / zoomLevel;
+  const relativeToCenterY = (clickY - containerCenterY - imagePosition.y) / zoomLevel;
+
+  // Now we need to convert this to the actual image dimensions
+  // Get the natural aspect ratio and container aspect ratio
   const imgNaturalRatio = img.naturalWidth / img.naturalHeight;
-  const containerRatio = imgRect.width / imgRect.height;
-  
-  let actualImageWidth, actualImageHeight, offsetX, offsetY;
-  
+  const containerRatio = containerRect.width / containerRect.height;
+
+  let displayWidth, displayHeight;
   if (imgNaturalRatio > containerRatio) {
-    // Image is constrained by width (letterboxed top/bottom)
-    actualImageWidth = imgRect.width;
-    actualImageHeight = imgRect.width / imgNaturalRatio;
-    offsetX = 0;
-    offsetY = (imgRect.height - actualImageHeight) / 2;
+    // Image is constrained by width
+    displayWidth = containerRect.width;
+    displayHeight = containerRect.width / imgNaturalRatio;
   } else {
-    // Image is constrained by height (pillarboxed left/right)
-    actualImageHeight = imgRect.height;
-    actualImageWidth = imgRect.height * imgNaturalRatio;
-    offsetX = (imgRect.width - actualImageWidth) / 2;
-    offsetY = 0;
+    // Image is constrained by height
+    displayHeight = containerRect.height;
+    displayWidth = containerRect.height * imgNaturalRatio;
   }
 
-  // Adjust click coordinates relative to the actual visible image
-  const adjustedClickX = clickX - offsetX;
-  const adjustedClickY = clickY - offsetY;
+  // Convert relative-to-center coordinates to image coordinates
+  const imageX = relativeToCenterX + displayWidth / 2;
+  const imageY = relativeToCenterY + displayHeight / 2;
 
-  // Check if click is within the actual visible image bounds
-  if (
-    adjustedClickX < 0 ||
-    adjustedClickX > actualImageWidth ||
-    adjustedClickY < 0 ||
-    adjustedClickY > actualImageHeight
-  ) {
+  // Check if click is within the image bounds
+  if (imageX < 0 || imageX > displayWidth || imageY < 0 || imageY > displayHeight) {
     return;
   }
 
-  // Convert to percentage relative to the actual image size
-  const xPercent = (adjustedClickX / actualImageWidth) * 100;
-  const yPercent = (adjustedClickY / actualImageHeight) * 100;
-  // **END OF ADDED SECTION**
+  // Convert to percentage
+  const xPercent = (imageX / displayWidth) * 100;
+  const yPercent = (imageY / displayHeight) * 100;
 
   const clampedX = Math.max(0, Math.min(100, xPercent));
   const clampedY = Math.max(0, Math.min(100, yPercent));
 
-  console.log("Direct click positioning:", {
+  console.log("Click positioning with zoom/pan:", {
+    zoomLevel,
+    imagePosition,
     clickX,
     clickY,
-    imgRect: {
-      width: imgRect.width,
-      height: imgRect.height,
-      left: imgRect.left,
-      top: imgRect.top,
-    },
-    actualImageDimensions: { width: actualImageWidth, height: actualImageHeight },
-    offset: { x: offsetX, y: offsetY },
-    adjustedClick: { x: adjustedClickX, y: adjustedClickY },
+    containerCenter: { x: containerCenterX, y: containerCenterY },
+    relativeToCenter: { x: relativeToCenterX, y: relativeToCenterY },
+    displayDimensions: { width: displayWidth, height: displayHeight },
+    imageCoords: { x: imageX, y: imageY },
     percentages: { x: clampedX, y: clampedY },
   });
 
