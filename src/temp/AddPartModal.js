@@ -2274,3 +2274,60 @@ const AddPartModal = ({
 };
 
 export default AddPartModal;
+
+
+// Auto-load image when configuration matches existing part
+useEffect(() => {
+  console.log("🔄 Auto-load useEffect triggered:", {
+    editMode,
+    editModePointsSet,
+    formComplete: !!(form.part && form.model && form.variant && form.side),
+    hasImageUrl: !!form.imageUrl,
+    isManuallyUploaded,
+    hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
+  });
+
+  if (
+    !editMode &&
+    !editModePointsSet &&
+    form.part &&
+    form.model &&
+    form.variant &&
+    form.side &&
+    !form.imageUrl &&
+    !isManuallyUploaded &&
+    existingPartsData &&
+    existingPartsData.exists
+  ) {
+    const existingImageData = getExistingImageData();
+
+    if (existingImageData) {
+      console.log("🔄 Auto-loading existing configuration...");
+      
+      // Get existing points IMMEDIATELY, not in setTimeout
+      const existingPoints = getExistingPointsForImage();
+      console.log("🔄 Existing points found:", existingPoints);
+
+      handleChange("image", {
+        name: existingImageData.imageName,
+        size: existingImageData.imageSize,
+        isAutoLoaded: true,
+        partId: existingImageData.partId,
+      });
+      handleChange("imageUrl", existingImageData.imageUrl);
+      setProgress(100);
+      
+      // Set points immediately with the image data
+      setTempMarkupPoints(existingPoints);
+    }
+  }
+}, [
+  form.part,
+  form.model,
+  form.variant,
+  form.side,
+  editMode,
+  existingPartsData?.exists, // Use .exists instead of whole object
+  editModePointsSet,
+  isManuallyUploaded
+]);
