@@ -1116,42 +1116,68 @@ const handleImageClick = (event) => {
 
   const img = imageRef.current;
   const container = containerRef.current;
-  
-  if (!container) return;
+  const containerRect = container.getBoundingClientRect();
 
-  // Get the TRANSFORMED CONTAINER bounds, not the image bounds
-  const transformedContainer = img.parentElement; // This is the Box with the transform
-  const transformedRect = transformedContainer.getBoundingClientRect();
+  // Get click position relative to the container
+  const clickX = event.clientX - containerRect.left;
+  const clickY = event.clientY - containerRect.top;
 
-  // Get click position relative to the transformed container
-  const clickX = event.clientX - transformedRect.left;
-  const clickY = event.clientY - transformedRect.top;
+  // Calculate the actual image display size within the container (accounting for object-fit: contain)
+  const imgNaturalRatio = img.naturalWidth / img.naturalHeight;
+  const containerRatio = containerRect.width / containerRect.height;
 
-  // Check if click is within the transformed container bounds
-  if (clickX < 0 || clickX > transformedRect.width || clickY < 0 || clickY > transformedRect.height) {
+  let imageDisplayWidth, imageDisplayHeight, imageOffsetX, imageOffsetY;
+
+  if (imgNaturalRatio > containerRatio) {
+    // Image width is constrained by container width
+    imageDisplayWidth = containerRect.width;
+    imageDisplayHeight = containerRect.width / imgNaturalRatio;
+    imageOffsetX = 0;
+    imageOffsetY = (containerRect.height - imageDisplayHeight) / 2;
+  } else {
+    // Image height is constrained by container height
+    imageDisplayHeight = containerRect.height;
+    imageDisplayWidth = containerRect.height * imgNaturalRatio;
+    imageOffsetX = (containerRect.width - imageDisplayWidth) / 2;
+    imageOffsetY = 0;
+  }
+
+  // Adjust click coordinates to be relative to the actual image area
+  const imageRelativeX = clickX - imageOffsetX;
+  const imageRelativeY = clickY - imageOffsetY;
+
+  // Check if click is within the actual image bounds
+  if (
+    imageRelativeX < 0 ||
+    imageRelativeX > imageDisplayWidth ||
+    imageRelativeY < 0 ||
+    imageRelativeY > imageDisplayHeight
+  ) {
     return;
   }
 
-  // Convert to percentage relative to the transformed container
-  // This matches how the points are positioned: left: `${point.x}%`, top: `${point.y}%`
-  const xPercent = (clickX / transformedRect.width) * 100;
-  const yPercent = (clickY / transformedRect.height) * 100;
+  // Convert to percentage (this is how points are positioned)
+  const xPercent = (imageRelativeX / imageDisplayWidth) * 100;
+  const yPercent = (imageRelativeY / imageDisplayHeight) * 100;
 
   const clampedX = Math.max(0, Math.min(100, xPercent));
   const clampedY = Math.max(0, Math.min(100, yPercent));
 
-  console.log("Correct click positioning:", {
-    transformedRect: {
-      width: transformedRect.width,
-      height: transformedRect.height,
-      left: transformedRect.left,
-      top: transformedRect.top,
-    },
+  console.log("Fixed click positioning:", {
     clickX,
     clickY,
+    containerRect: {
+      width: containerRect.width,
+      height: containerRect.height,
+    },
+    imageDisplay: {
+      width: imageDisplayWidth,
+      height: imageDisplayHeight,
+      offsetX: imageOffsetX,
+      offsetY: imageOffsetY,
+    },
+    imageRelative: { x: imageRelativeX, y: imageRelativeY },
     percentages: { x: clampedX, y: clampedY },
-    zoomLevel,
-    imagePosition,
   });
 
   setCurrentPoint({ x: clampedX, y: clampedY });
