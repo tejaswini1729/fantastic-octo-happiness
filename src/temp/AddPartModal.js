@@ -1116,63 +1116,38 @@ const handleImageClick = (event) => {
 
   const img = imageRef.current;
   const container = containerRef.current;
+  
+  if (!container) return;
+
+  // **REPLACE WITH THIS CALCULATION:**
   const containerRect = container.getBoundingClientRect();
+  const imgRect = img.getBoundingClientRect();
 
-  // Get click position relative to the container
-  const clickX = event.clientX - containerRect.left;
-  const clickY = event.clientY - containerRect.top;
+  // Get click position relative to the actual image element (which is transformed)
+  const clickX = event.clientX - imgRect.left;
+  const clickY = event.clientY - imgRect.top;
 
-  // **REPLACE THE EXISTING CALCULATION WITH THIS:**
-  // Account for zoom and pan transformations
-  // The image is centered in the container, so we need to find the center point first
-  const containerCenterX = containerRect.width / 2;
-  const containerCenterY = containerRect.height / 2;
-
-  // Calculate the click position relative to the image center, accounting for pan
-  const relativeToCenterX = (clickX - containerCenterX - imagePosition.x) / zoomLevel;
-  const relativeToCenterY = (clickY - containerCenterY - imagePosition.y) / zoomLevel;
-
-  // Now we need to convert this to the actual image dimensions
-  // Get the natural aspect ratio and container aspect ratio
-  const imgNaturalRatio = img.naturalWidth / img.naturalHeight;
-  const containerRatio = containerRect.width / containerRect.height;
-
-  let displayWidth, displayHeight;
-  if (imgNaturalRatio > containerRatio) {
-    // Image is constrained by width
-    displayWidth = containerRect.width;
-    displayHeight = containerRect.width / imgNaturalRatio;
-  } else {
-    // Image is constrained by height
-    displayHeight = containerRect.height;
-    displayWidth = containerRect.height * imgNaturalRatio;
-  }
-
-  // Convert relative-to-center coordinates to image coordinates
-  const imageX = relativeToCenterX + displayWidth / 2;
-  const imageY = relativeToCenterY + displayHeight / 2;
-
-  // Check if click is within the image bounds
-  if (imageX < 0 || imageX > displayWidth || imageY < 0 || imageY > displayHeight) {
+  // Check if click is within the transformed image bounds
+  if (clickX < 0 || clickX > imgRect.width || clickY < 0 || clickY > imgRect.height) {
     return;
   }
 
-  // Convert to percentage
-  const xPercent = (imageX / displayWidth) * 100;
-  const yPercent = (imageY / displayHeight) * 100;
+  // Convert to percentage - this should match how the points are positioned
+  const xPercent = (clickX / imgRect.width) * 100;
+  const yPercent = (clickY / imgRect.height) * 100;
 
   const clampedX = Math.max(0, Math.min(100, xPercent));
   const clampedY = Math.max(0, Math.min(100, yPercent));
 
-  console.log("Click positioning with zoom/pan:", {
-    zoomLevel,
-    imagePosition,
+  console.log("Simplified click positioning:", {
+    imgRect: {
+      width: imgRect.width,
+      height: imgRect.height,
+      left: imgRect.left,
+      top: imgRect.top,
+    },
     clickX,
     clickY,
-    containerCenter: { x: containerCenterX, y: containerCenterY },
-    relativeToCenter: { x: relativeToCenterX, y: relativeToCenterY },
-    displayDimensions: { width: displayWidth, height: displayHeight },
-    imageCoords: { x: imageX, y: imageY },
     percentages: { x: clampedX, y: clampedY },
   });
 
