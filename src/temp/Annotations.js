@@ -71,6 +71,8 @@ import Alert from "../../components/Alert";
 import { ContentContainer } from "./styles/AnnotationStyles";
 import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Typography } from "@mui/material";
 import { getAllAnnotData, getAnnotFilterData, checkPartExists } from "../../axios/getRequest";
+import { updateAnnotMarkupPoint } from "../../axios/putRequest";
+import { deleteMarkupPint } from "../../axios/deleteRequest";
 import useDebounce from "../../hooks/useDebounce";
 import {
   useInfiniteQuery,
@@ -80,7 +82,10 @@ import {
 } from "@tanstack/react-query";
 
 const Annotations = () => {
-  const [isDataAdded, setIsDataAdded] = useState(false);
+  const queryClient = useQueryClient();
+  const intialDataAdded = {status:false,message:"",messageStatus:""}
+  const [isDataAdded, setIsDataAdded] = useState(intialDataAdded);
+
   const [shopId, setShopId] = useState(1)
   const limit = 2
   const [partsData, setFormData] = useState([
@@ -318,11 +323,12 @@ const Annotations = () => {
   };
 
   const onNext = (partData) => {
-    const randomId = Math.floor(Math.random() * 1_000_000) + 101;
-    const newPartData = { ...partData, id: randomId };
-    setFormData((prev) => [...prev, newPartData]);
+    // const randomId = Math.floor(Math.random() * 1_000_000) + 101;
+    // const newPartData = { ...partData, id: randomId };
+    // setFormData((prev) => [...prev, newPartData]);
     setModalOpen(false);
-    setIsDataAdded(true);
+    // Need to implement this
+    // setIsDataAdded(true);
   };
 
   // Edit functionality handlers
@@ -354,35 +360,7 @@ const Annotations = () => {
 
   const confirmEdit = () => {
     if (pendingEditData && editData) {
-      setFormData((prevData) =>
-        prevData.map((part) => {
-          if (part.id === editData.partData.id) {
-            // Update the specific markup point
-            const updatedMarkupPoints = part.markupPoints.map((mp) => {
-              if (
-                mp.position === editData.originalPosition &&
-                mp.category === editData.originalCategory
-              ) {
-                // Find the updated markup point from pendingEditData
-                const updatedPoint =
-                  pendingEditData.markupPoints.find(
-                    (newMp) =>
-                      newMp.position === editData.originalPosition ||
-                      newMp.category === editData.originalCategory
-                  ) || pendingEditData.markupPoints[0]; // fallback to first point
-                return updatedPoint;
-              }
-              return mp;
-            });
-            return { ...part, markupPoints: updatedMarkupPoints };
-          }
-          return part;
-        })
-      );
-      setEditConfirmOpen(false);
-      setPendingEditData(null);
-      setEditData(null);
-      setIsDataAdded(true);
+      mutationUpdatePosition.mutate({ shopId:12, payload:pendingEditData });
     }
   };
 
@@ -392,31 +370,17 @@ const Annotations = () => {
   };
 
   // Delete functionality handlers
-  const handleDelete = (itemId, position, category) => {
-    setDeleteData({ itemId, position, category });
+  const handleDelete = (img_pos_id, id) => {
+    setDeleteData({ img_pos_id, id });
     setDeleteConfirmOpen(true);
   };
 
   const confirmDelete = () => {
     if (deleteData) {
-      setFormData((prevData) =>
-        prevData.map((part) => {
-          if (part.id === deleteData.itemId) {
-            const updatedMarkupPoints = part.markupPoints.filter(
-              (mp) =>
-                !(
-                  mp.position === deleteData.position &&
-                  mp.category === deleteData.category
-                )
-            );
-            return { ...part, markupPoints: updatedMarkupPoints };
-          }
-          return part;
-        })
-      );
-      setDeleteConfirmOpen(false);
-      setDeleteData(null);
-      setIsDataAdded(true);
+      //call Mutation
+      if(deleteData){
+         mutationDeletePosition.mutate({ shopId:shopId, id: deleteData?.id, img_pos_id: deleteData?.img_pos_id });
+      }
     }
   };
 
@@ -426,8 +390,8 @@ const Annotations = () => {
   };
 
   useEffect(()=>{
-    console.log("Checking search term",search)
-  },[search])
+    console.log("Checking is data added",isDataAdded)
+  },[isDataAdded?.status])
 
   // API Integration Part
   // List API with Pagination
@@ -485,10 +449,62 @@ const Annotations = () => {
       isPartExistsQueryStatus === "success" &&
       isPartExists?.data?.body
     ) {
-      return [isPartExists.data.body];
+      return isPartExists.data.body;
     }
-    return [];
+    return {};
   }, [isPartExistsQueryStatus, isPartExists]);
+  // Mutation for updating markup point
+  // This mutation will be used to update the markup point when the user confirms the edit
+  const mutationUpdatePosition = useMutation({
+    mutationFn: ({ shopId, payload }) => updateAnnotMarkupPoint(shopId, payload), // Set the mutation function here
+    onSuccess: (result) => {
+      if (result) {
+        if (result?.data?.statusCode === 200) {
+          queryClient.invalidateQueries({ queryKey: ["annot_pp"] });
+          setEditConfirmOpen(false);
+          setPendingEditData(null);
+          setEditData(null);
+          setIsDataAdded({status:true,message:result?.data?.message,messageStatus:"success"});
+        }
+      }
+    },
+    onError: (error) => {
+          console.log("Checking error123")
+          setIsDataAdded({status:true,message:result?.data?.message,messageStatus:"error"});
+
+      // setModalState({ ...modalState, saveConfirmModal: false });
+      // setVerticalModalState({
+      //   ...verticalModalState,
+      //   isEditBOMModal: true,
+      // });
+      // showErrorToast(error?.response?.data?.message);
+    },
+  });
+
+
+  // Mutation for deleting markup point
+  const mutationDeletePosition = useMutation({
+    mutationFn: ({ shopId, id, img_pos_id }) => deleteMarkupPint(shopId,id,img_pos_id), // Set the mutation function here
+    onSuccess: (result) => {
+      if (result) {
+        if (result?.data?.statusCode === 200) {
+          queryClient.invalidateQueries({ queryKey: ["annot_pp"] });
+          setDeleteConfirmOpen(false);
+          setDeleteData(null);
+          setIsDataAdded({status:true,message:result?.data?.message,messageStatus:"success"});
+        }
+      }
+    },
+    onError: (error) => {
+      console.log("Checking error124")
+      setIsDataAdded({status:true,message:result?.data?.message,messageStatus:"error"});
+      // setModalState({ ...modalState, rmvConfirmModal: false });
+      // showErrorToast(error?.response?.data?.message);
+    },
+  });
+
+
+
   return (
     <>
       <HeaderWithSearchActions
@@ -528,13 +544,13 @@ const Annotations = () => {
       />
 
       <Alert
-        open={isDataAdded}
-        onClose={() => setIsDataAdded(false)}
-        title="Successful"
-        message={"Image Uploaded for SIZE STOPPER 2 UP/DN"}
-        severity={"success"}
+        open={isDataAdded?.status===true}
+        onClose={() => setIsDataAdded(intialDataAdded)}
+        title={isDataAdded?.messageStatus==="success"?"Successful":"Error13256465645"}
+        message={isDataAdded?.message}
+        severity={isDataAdded?.messageStatus}
         sx={{
-          backgroundColor: "#308242",
+          backgroundColor: isDataAdded?.messageStatus==="success"?"#308242":"purple",
           color: "white",
           "& .MuiAlert-icon": {
             color: "white",

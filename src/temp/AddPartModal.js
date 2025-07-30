@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useMemo } from "react";
 import PrimaryButton from "../../../components/Buttons/PrimaryButton/PrimaryButton";
 import SecondaryButton from "../../../components/Buttons/SecondaryButton/SecondaryButton";
@@ -992,6 +993,7 @@ const hanldeOnNext = () => {
   if (editMode && step === 3) {
     // In edit mode, submit from step 3
     const data = mapDataRecord();
+    console.log("Checking data123",data)
     resetData();
     onNext(data);
     return;
@@ -1093,37 +1095,102 @@ const handleDrop = (e) => {
 const handleImageClick = (event) => {
   if (!form.imageUrl || !imageRef.current) return;
 
+  // Prevent adding points in edit mode
+  if (editMode) return;
+
+  // Prevent adding points if we just finished panning (moved more than 5 pixels)
+  if (isPanMode || panDistance > 5) {
+    return;
+  }
+
+  // Prevent adding points while panning
+  if (isPanning) return;
+
+  if (dragStarted) {
+    return;
+  }
+  setShowNoPointsBanner(false);
+
   event.preventDefault();
   event.stopPropagation();
 
   const img = imageRef.current;
-  const rect = img.getBoundingClientRect();
+  const imgRect = img.getBoundingClientRect();
 
-  const x = event.clientX - rect.left;
-  const y = event.clientY - rect.top;
+  // Get click position relative to the actual image element
+  const clickX = event.clientX - imgRect.left;
+  const clickY = event.clientY - imgRect.top;
 
-  const xPercent = (x / rect.width) * 100;
-  const yPercent = (y / rect.height) * 100;
+  // **ADD THIS SECTION - Calculate actual visible image dimensions and offset**
+  const imgNaturalRatio = img.naturalWidth / img.naturalHeight;
+  const containerRatio = imgRect.width / imgRect.height;
+  
+  let actualImageWidth, actualImageHeight, offsetX, offsetY;
+  
+  if (imgNaturalRatio > containerRatio) {
+    // Image is constrained by width (letterboxed top/bottom)
+    actualImageWidth = imgRect.width;
+    actualImageHeight = imgRect.width / imgNaturalRatio;
+    offsetX = 0;
+    offsetY = (imgRect.height - actualImageHeight) / 2;
+  } else {
+    // Image is constrained by height (pillarboxed left/right)
+    actualImageHeight = imgRect.height;
+    actualImageWidth = imgRect.height * imgNaturalRatio;
+    offsetX = (imgRect.width - actualImageWidth) / 2;
+    offsetY = 0;
+  }
+
+  // Adjust click coordinates relative to the actual visible image
+  const adjustedClickX = clickX - offsetX;
+  const adjustedClickY = clickY - offsetY;
+
+  // Check if click is within the actual visible image bounds
+  if (
+    adjustedClickX < 0 ||
+    adjustedClickX > actualImageWidth ||
+    adjustedClickY < 0 ||
+    adjustedClickY > actualImageHeight
+  ) {
+    return;
+  }
+
+  // Convert to percentage relative to the actual image size
+  const xPercent = (adjustedClickX / actualImageWidth) * 100;
+  const yPercent = (adjustedClickY / actualImageHeight) * 100;
+  // **END OF ADDED SECTION**
 
   const clampedX = Math.max(0, Math.min(100, xPercent));
   const clampedY = Math.max(0, Math.min(100, yPercent));
 
+  console.log("Direct click positioning:", {
+    clickX,
+    clickY,
+    imgRect: {
+      width: imgRect.width,
+      height: imgRect.height,
+      left: imgRect.left,
+      top: imgRect.top,
+    },
+    actualImageDimensions: { width: actualImageWidth, height: actualImageHeight },
+    offset: { x: offsetX, y: offsetY },
+    adjustedClick: { x: adjustedClickX, y: adjustedClickY },
+    percentages: { x: clampedX, y: clampedY },
+  });
+
   setCurrentPoint({ x: clampedX, y: clampedY });
 
-  // Calculate modal position relative to the click point
-  const modalX = event.clientX + 20; // 20px offset to the right
-  const modalY = event.clientY - 100; // 100px offset upwards
+  const modalX = event.clientX + 20;
+  const modalY = event.clientY - 100;
 
-  // Ensure modal doesn't go off-screen
-  const adjustedX = Math.min(modalX, window.innerWidth - 300); // assuming modal width ~280px
-  const adjustedY = Math.max(modalY, 50); // minimum 50px from top
+  const adjustedX = Math.min(modalX, window.innerWidth - 300);
+  const adjustedY = Math.max(modalY, 50);
 
   setModalPosition({ x: adjustedX, y: adjustedY });
   setPointModal(true);
   setPointData({ position: "", category: "" });
   setEditingPointIndex(null);
 };
-
 const handlePointSubmit = () => {
   console.log("handlePointSubmit called with:", { pointData, editMode, editingPointIndex });
   

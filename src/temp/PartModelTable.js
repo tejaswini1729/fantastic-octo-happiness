@@ -53,7 +53,7 @@ export default function PartModelTable({
     if (action === "edit") {
       onEdit(item.img_pos_id, item?.id);
     } else if (action === "delete") {
-      onDelete(item.img_pos_id, item.position, item.category);
+      onDelete(item.img_pos_id, item?.id);
     }
     handleDropdownClose();
   };
