@@ -1119,36 +1119,39 @@ const handleImageClick = (event) => {
   
   if (!container) return;
 
-  // **REPLACE WITH THIS CALCULATION:**
-  const containerRect = container.getBoundingClientRect();
-  const imgRect = img.getBoundingClientRect();
+  // Get the TRANSFORMED CONTAINER bounds, not the image bounds
+  const transformedContainer = img.parentElement; // This is the Box with the transform
+  const transformedRect = transformedContainer.getBoundingClientRect();
 
-  // Get click position relative to the actual image element (which is transformed)
-  const clickX = event.clientX - imgRect.left;
-  const clickY = event.clientY - imgRect.top;
+  // Get click position relative to the transformed container
+  const clickX = event.clientX - transformedRect.left;
+  const clickY = event.clientY - transformedRect.top;
 
-  // Check if click is within the transformed image bounds
-  if (clickX < 0 || clickX > imgRect.width || clickY < 0 || clickY > imgRect.height) {
+  // Check if click is within the transformed container bounds
+  if (clickX < 0 || clickX > transformedRect.width || clickY < 0 || clickY > transformedRect.height) {
     return;
   }
 
-  // Convert to percentage - this should match how the points are positioned
-  const xPercent = (clickX / imgRect.width) * 100;
-  const yPercent = (clickY / imgRect.height) * 100;
+  // Convert to percentage relative to the transformed container
+  // This matches how the points are positioned: left: `${point.x}%`, top: `${point.y}%`
+  const xPercent = (clickX / transformedRect.width) * 100;
+  const yPercent = (clickY / transformedRect.height) * 100;
 
   const clampedX = Math.max(0, Math.min(100, xPercent));
   const clampedY = Math.max(0, Math.min(100, yPercent));
 
-  console.log("Simplified click positioning:", {
-    imgRect: {
-      width: imgRect.width,
-      height: imgRect.height,
-      left: imgRect.left,
-      top: imgRect.top,
+  console.log("Correct click positioning:", {
+    transformedRect: {
+      width: transformedRect.width,
+      height: transformedRect.height,
+      left: transformedRect.left,
+      top: transformedRect.top,
     },
     clickX,
     clickY,
     percentages: { x: clampedX, y: clampedY },
+    zoomLevel,
+    imagePosition,
   });
 
   setCurrentPoint({ x: clampedX, y: clampedY });
