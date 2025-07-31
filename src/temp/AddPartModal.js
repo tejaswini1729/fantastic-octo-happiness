@@ -2275,18 +2275,62 @@ const AddPartModal = ({
 
 export default AddPartModal;
 
+// 🔧 FIXED: handleChange function - Only clear data when actually needed
+const handleChange = (key, value) => {
+  const updates = { [key]: value };
 
-// Auto-load image when configuration matches existing part
+  // Reset dependent fields when parent selections change
+  if (key === "model") {
+    updates.variant = "";
+    updates.part = "";
+    updates.side = "";
+    // Only clear image/points if manually uploaded OR no existing data for new config
+    if (!isManuallyUploaded) {
+      updates.image = null;
+      updates.imageUrl = null;
+      updates.tempMarkupPoints = [];
+      setProgress(0);
+    }
+  } else if (key === "variant") {
+    updates.part = "";
+    updates.side = "";
+    if (!isManuallyUploaded) {
+      updates.image = null;
+      updates.imageUrl = null;
+      updates.tempMarkupPoints = [];
+      setProgress(0);
+    }
+  } else if (key === "part") {
+    updates.side = "";
+    if (!isManuallyUploaded) {
+      updates.image = null;
+      updates.imageUrl = null;
+      updates.tempMarkupPoints = [];
+      setProgress(0);
+    }
+  } else if (key === "side") {
+    // Only clear if manually uploaded, otherwise let auto-load handle it
+    if (!isManuallyUploaded) {
+      updates.image = null;
+      updates.imageUrl = null;
+      updates.tempMarkupPoints = [];
+      setProgress(0);
+    }
+  }
+
+  updateFormData(updates);
+
+  // Reset manual upload flag when form configuration changes
+  if (
+    !editMode &&
+    (key === "part" || key === "model" || key === "variant" || key === "side")
+  ) {
+    setIsManuallyUploaded(false);
+  }
+};
+
+// 🔧 FIXED: Auto-load image useEffect with proper cleanup
 useEffect(() => {
-  console.log("🔄 Auto-load useEffect triggered:", {
-    editMode,
-    editModePointsSet,
-    formComplete: !!(form.part && form.model && form.variant && form.side),
-    hasImageUrl: !!form.imageUrl,
-    isManuallyUploaded,
-    hasExistingPartsData: !!(existingPartsData && existingPartsData.exists)
-  });
-
   if (
     !editMode &&
     !editModePointsSet &&
@@ -2302,12 +2346,6 @@ useEffect(() => {
     const existingImageData = getExistingImageData();
 
     if (existingImageData) {
-      console.log("🔄 Auto-loading existing configuration...");
-      
-      // Get existing points IMMEDIATELY, not in setTimeout
-      const existingPoints = getExistingPointsForImage();
-      console.log("🔄 Existing points found:", existingPoints);
-
       handleChange("image", {
         name: existingImageData.imageName,
         size: existingImageData.imageSize,
@@ -2316,9 +2354,21 @@ useEffect(() => {
       });
       handleChange("imageUrl", existingImageData.imageUrl);
       setProgress(100);
-      
-      // Set points immediately with the image data
-      setTempMarkupPoints(existingPoints);
+
+      // Use ref to prevent stale closure issues
+      let isMounted = true;
+      const timeoutId = setTimeout(() => {
+        if (isMounted) {
+          const existingPoints = getExistingPointsForImage();
+          console.log('🔥 Auto-loading existing points:', existingPoints);
+          setTempMarkupPoints(existingPoints);
+        }
+      }, 100);
+
+      return () => {
+        isMounted = false;
+        clearTimeout(timeoutId);
+      };
     }
   }
 }, [
@@ -2326,8 +2376,186 @@ useEffect(() => {
   form.model,
   form.variant,
   form.side,
+  form.imageUrl, // ✅ Added missing dependency
+  isManuallyUploaded, // ✅ Added missing dependency
   editMode,
-  existingPartsData?.exists, // Use .exists instead of whole object
+  existingPartsData?.exists, // ✅ Use optional chaining
   editModePointsSet,
-  isManuallyUploaded
 ]);
+
+// 🔧 FIXED: Update temp markup points with proper dependency management
+useEffect(() => {
+  // Skip if we're in edit mode or if basic conditions aren't met
+  if (editMode || editModePointsSet || !form.imageUrl) return;
+  
+  if (
+    form.part &&
+    form.model &&
+    form.variant &&
+    form.side &&
+    existingPartsData?.exists
+  ) {
+    const existingPoints = getExistingPointsForImage();
+    const newPoints = tempMarkupPoints.filter((point) => !point.isReadOnly);
+    
+    // Only update if there are actually existing points to merge
+    if (existingPoints.length > 0) {
+      console.log('🔥 Merging existing and new points:', { existing: existingPoints.length, new: newPoints.length });
+      setTempMarkupPoints([...existingPoints, ...newPoints]);
+    }
+  }
+}, [
+  form.imageUrl,
+  editModePointsSet,
+  editMode,
+  form.part,
+  form.model,
+  form.variant,
+  form.side,
+  existingPartsData?.exists,
+  // ⚠️ Deliberately NOT including tempMarkupPoints to avoid infinite loops
+]);
+
+// 🔧 FIXED: Reset edit mode initialization - only reset flags, not data
+useEffect(() => {
+  if (editMode && editData) {
+    console.log('🔥 Resetting edit mode flags only');
+    setEditModeInitialized(false);
+    setEditModePointsSet(false);
+    // ⚠️ DO NOT call setTempMarkupPoints here
+  }
+}, [editData?.markupPoint?.img_pos_id, editData?.markupPoint?.position]);
+
+// 🔧 FIXED: Main edit mode initialization - only reset when truly switching modes
+useEffect(() => {
+  if (editMode && editData && open) {
+    console.log('🔥 Setting up edit mode');
+    setEditModeInitialized(true);
+    setupEditModePoints();
+    setStep(2);
+    setHasVisitedStep2(true);
+    setProgress(100);
+    setPointData({
+      position: editData.markupPoint.position.toString(),
+      category: editData.markupPoint.category,
+    });
+    setEditModePointsSet(true);
+  } else if (!editMode && !open) { // ✅ Only reset when modal actually closes
+    console.log('🔥 Modal closed, resetting data');
+    resetData();
+  }
+}, [editMode, editData?.markupPoint?.img_pos_id, open]);
+
+// 🔧 FIXED: Update points when existingPartsData loads - with better conditions
+useEffect(() => {
+  if (
+    editMode &&
+    editData &&
+    open &&
+    existingPartsData?.markupPoints?.length > 0 &&
+    tempMarkupPoints.length <= 1 && // ✅ Changed from === 1 to <= 1
+    !editModeInitialized // ✅ Additional safeguard
+  ) {
+    console.log('🔥 Setting up edit mode points from existing data');
+    setupEditModePoints();
+  }
+}, [existingPartsData?.markupPoints?.length, editModeInitialized]);
+
+// 🔧 FIXED: Form validation useEffect - no changes to tempMarkupPoints
+useEffect(() => {
+  if (editMode) {
+    if (tempMarkupPoints.length > 0) {
+      setIsDisabled(false);
+    } else {
+      setIsDisabled(true);
+    }
+    return;
+  }
+
+  const hasEmpty = Object.values(form).some((value) => !value);
+  setIsDisabled(hasEmpty);
+}, [form, editMode, tempMarkupPoints]);
+
+// 🔧 FIXED: Step 2 validation - no changes to tempMarkupPoints
+useEffect(() => {
+  if (step === 2) {
+    if (tempMarkupPoints.length > 0) {
+      setIsDisabled(false);
+    } else {
+      setIsDisabled(true);
+    }
+  }
+}, [tempMarkupPoints, step]); // ✅ Added step dependency
+
+// 🔧 FIXED: Banner display - no changes to tempMarkupPoints
+useEffect(() => {
+  // Show banner when image exists but no points exist
+  if (
+    !editMode &&
+    form.imageUrl &&
+    form.part &&
+    form.model &&
+    form.variant &&
+    form.side &&
+    tempMarkupPoints.length === 0
+  ) {
+    setShowNoPointsBanner(true);
+  } else {
+    setShowNoPointsBanner(false);
+  }
+}, [form.imageUrl, tempMarkupPoints.length, form.part, form.model, form.variant, form.side, editMode]);
+
+// 🔧 ADD: Debug useEffect to track when tempMarkupPoints changes
+useEffect(() => {
+  console.log('🔥 tempMarkupPoints changed:', {
+    length: tempMarkupPoints.length,
+    editMode,
+    editModePointsSet,
+    isManuallyUploaded,
+    points: tempMarkupPoints.map(p => ({ 
+      position: p.position, 
+      isReadOnly: p.isReadOnly,
+      isEditable: p.isEditable 
+    }))
+  });
+}, [tempMarkupPoints]);
+
+// 🔧 FIXED: resetData function - better edit mode handling
+const resetData = () => {
+  console.log('🔥 resetData called:', { editMode });
+  
+  if (editMode) {
+    setStep(2);
+    setHasVisitedStep2(true);
+    setEditingPointIndex(null);
+    // Reset zoom in edit mode too
+    setZoomLevel(1);
+    setImagePosition({ x: 0, y: 0 });
+    setIsPanning(false);
+    // ⚠️ DO NOT clear tempMarkupPoints in edit mode
+    return;
+  }
+
+  // Only reset in non-edit mode
+  console.log('🔥 Clearing form data in resetData');
+  updateFormData({
+    part: "",
+    model: "",
+    variant: "",
+    side: "",
+    image: null,
+    imageUrl: null,
+    tempMarkupPoints: [],
+  });
+  setStep(1);
+  setHasVisitedStep2(false);
+  setEditingPointIndex(null);
+  setIsManuallyUploaded(false);
+  setEditModeInitialized(false);
+  setEditModePointsSet(false);
+
+  // Reset zoom
+  setZoomLevel(1);
+  setImagePosition({ x: 0, y: 0 });
+  setIsPanning(false);
+};
